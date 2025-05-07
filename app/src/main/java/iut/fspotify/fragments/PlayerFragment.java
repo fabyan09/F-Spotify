@@ -1,11 +1,12 @@
 package iut.fspotify.fragments;
 
-import static android.content.ContentValues.TAG;
-
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.StrictMode;
 import android.util.Log;
 import android.view.*;
@@ -23,11 +24,15 @@ public class PlayerFragment extends Fragment {
     private boolean showingLyrics = false;
     private int currentIndex = 0;
     private List<Song> songList;
+    private SharedPreferences prefs;
 
     private ImageView cover;
-    private TextView lyrics;
-    private TextView title;
-    private ImageButton play, next, prev, forward, rewind;
+    private ScrollView lyricsScroll;
+    private TextView lyrics, title;
+    private ImageButton play, next, prev, forward, rewind, likeButton;
+    private SeekBar seekBar;
+    private Handler handler = new Handler();
+    private Runnable updateSeekBar;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -35,24 +40,28 @@ public class PlayerFragment extends Fragment {
 
         cover = view.findViewById(R.id.cover_image);
         lyrics = view.findViewById(R.id.lyrics_text);
+        lyricsScroll = view.findViewById(R.id.lyrics_scroll);
         title = view.findViewById(R.id.title_text);
         play = view.findViewById(R.id.play_button);
         next = view.findViewById(R.id.next_button);
         prev = view.findViewById(R.id.prev_button);
         forward = view.findViewById(R.id.forward_button);
         rewind = view.findViewById(R.id.rewind_button);
+        likeButton = view.findViewById(R.id.like_button);
+        seekBar = view.findViewById(R.id.seek_bar);
+        FrameLayout mediaContainer = view.findViewById(R.id.media_container);
 
-        lyrics.setVisibility(View.GONE);
+        prefs = requireContext().getSharedPreferences("LIKED_SONGS", Context.MODE_PRIVATE);
 
         songList = CSVParser.parseCSV();
-        Toast.makeText(getContext(), "Songs loaded: " + songList.size(), Toast.LENGTH_SHORT).show();
         if (!songList.isEmpty()) {
             loadSong(currentIndex);
         }
 
-        cover.setOnClickListener(v -> {
+        mediaContainer.setOnClickListener(v -> {
             showingLyrics = !showingLyrics;
-            lyrics.setVisibility(showingLyrics ? View.VISIBLE : View.GONE);
+            cover.setVisibility(showingLyrics ? View.GONE : View.VISIBLE);
+            lyricsScroll.setVisibility(showingLyrics ? View.VISIBLE : View.GONE);
         });
 
         play.setOnClickListener(v -> {
@@ -90,11 +99,30 @@ public class PlayerFragment extends Fragment {
             }
         });
 
+        likeButton.setOnClickListener(v -> {
+            Song song = songList.get(currentIndex);
+            boolean alreadyLiked = prefs.getBoolean(song.title, false);
+            prefs.edit().putBoolean(song.title, !alreadyLiked).apply();
+            Toast.makeText(getContext(), alreadyLiked ? "Retiré des likés" : "Ajouté aux likés", Toast.LENGTH_SHORT).show();
+            updateLikeIcon(song.title);
+        });
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                if (fromUser && mediaPlayer != null) {
+                    mediaPlayer.seekTo(progress);
+                }
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
         return view;
     }
 
     private void loadSong(int index) {
         if (mediaPlayer != null) {
+            handler.removeCallbacks(updateSeekBar);
             mediaPlayer.stop();
             mediaPlayer.release();
             mediaPlayer = null;
@@ -122,5 +150,28 @@ public class PlayerFragment extends Fragment {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        seekBar.setMax(mediaPlayer.getDuration());
+
+        updateSeekBar = new Runnable() {
+            @Override
+            public void run() {
+                if (mediaPlayer != null) {
+                    seekBar.setProgress(mediaPlayer.getCurrentPosition());
+                    handler.postDelayed(this, 1000);
+                }
+            }
+        };
+        handler.post(updateSeekBar);
+
+        updateLikeIcon(song.title);
+        cover.setVisibility(View.VISIBLE);
+        lyricsScroll.setVisibility(View.GONE);
+        showingLyrics = false;
+    }
+
+    private void updateLikeIcon(String title) {
+        boolean liked = prefs.getBoolean(title, false);
+        likeButton.setImageResource(liked ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star);
     }
 }

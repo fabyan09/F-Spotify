@@ -2,13 +2,17 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <LinearLayout
-        android:orientation="vertical"
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:padding="16dp">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
         <TextView android:text="Titres Likés" android:textSize="20sp"  android:layout_height="match_parent" android:layout_width="match_parent"/>
-        <!-- Placeholder: Ajouter la suite plus tard -->
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/liked_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="8dp" />
     </LinearLayout>
 </ScrollView>
