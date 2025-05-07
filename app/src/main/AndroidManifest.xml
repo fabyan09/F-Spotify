@@ -8,7 +8,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/iconshrek"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/iconshrek"
+        android:roundIcon="@mipmap/iconshrekround"
         android:supportsRtl="true"
         android:theme="@style/Theme.FSpotify"
         tools:targetApi="31">
