@@ -77,10 +77,16 @@ public class PlayerFragment extends Fragment {
 
         play.setOnClickListener(v -> {
             if (mediaPlayer != null) {
-                if (mediaPlayer.isPlaying()) mediaPlayer.pause();
-                else mediaPlayer.start();
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.pause();
+                    play.setImageResource(android.R.drawable.ic_media_play);
+                } else {
+                    mediaPlayer.start();
+                    play.setImageResource(android.R.drawable.ic_media_pause);
+                }
             }
         });
+
 
         next.setOnClickListener(v -> {
             if (currentIndex < songList.size() - 1) {
@@ -111,11 +117,13 @@ public class PlayerFragment extends Fragment {
         });
 
         likeButton.setOnClickListener(v -> {
-            Song song = songList.get(currentIndex);
-            boolean alreadyLiked = prefs.getBoolean(song.title, false);
-            prefs.edit().putBoolean(song.title, !alreadyLiked).apply();
-            Toast.makeText(getContext(), alreadyLiked ? "Retiré des likés" : "Ajouté aux likés", Toast.LENGTH_SHORT).show();
-            updateLikeIcon(song.title);
+            if (songList != null && !songList.isEmpty()) {
+                Song song = songList.get(currentIndex);
+                boolean alreadyLiked = prefs.getBoolean(song.title, false);
+                prefs.edit().putBoolean(song.title, !alreadyLiked).apply();
+                Toast.makeText(getContext(), alreadyLiked ? "Retiré des likés" : "Ajouté aux likés", Toast.LENGTH_SHORT).show();
+                updateLikeIcon(song.title);
+            }
         });
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -156,11 +164,12 @@ public class PlayerFragment extends Fragment {
         mediaPlayer = new MediaPlayer();
         try {
             mediaPlayer.setDataSource("http://edu.info06.net/lyrics/mp3/" + song.mp3);
-            mediaPlayer.prepare();
-            mediaPlayer.start();
+            mediaPlayer.prepare(); // ⚠️ on ne fait PAS start()
+            play.setImageResource(android.R.drawable.ic_media_play);
         } catch (Exception e) {
             e.printStackTrace();
         }
+
 
         seekBar.setMax(mediaPlayer.getDuration());
 
@@ -232,6 +241,12 @@ public class PlayerFragment extends Fragment {
             }
         };
         handler.post(updateSeekBar);
+        if (mediaPlayer.isPlaying()) {
+            play.setImageResource(android.R.drawable.ic_media_pause);
+        } else {
+            play.setImageResource(android.R.drawable.ic_media_play);
+        }
+
     }
 
 
