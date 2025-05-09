@@ -20,10 +20,10 @@ import iut.fspotify.model.Song;
 import iut.fspotify.utils.CSVParser;
 
 public class PlayerFragment extends Fragment {
-    private MediaPlayer mediaPlayer;
-    private boolean showingLyrics = false;
-    private int currentIndex = 0;
-    private List<Song> songList;
+    private static MediaPlayer mediaPlayer;
+    private static boolean showingLyrics = false;
+    private static int currentIndex = 0;
+    private static List<Song> songList;
     private SharedPreferences prefs;
 
     private ImageView cover;
@@ -53,10 +53,21 @@ public class PlayerFragment extends Fragment {
 
         prefs = requireContext().getSharedPreferences("LIKED_SONGS", Context.MODE_PRIVATE);
 
-        songList = CSVParser.parseCSV();
-        if (!songList.isEmpty()) {
-            loadSong(currentIndex);
+        if (songList == null) {
+            songList = CSVParser.parseCSV();
         }
+
+        SharedPreferences prefs = requireContext().getSharedPreferences("PLAYER_STATE", Context.MODE_PRIVATE);
+        currentIndex = prefs.getInt("currentIndex", 0);
+        int savedPosition = prefs.getInt("currentPosition", 0);
+
+        if (mediaPlayer == null && !songList.isEmpty()) {
+            loadSong(currentIndex);
+            mediaPlayer.seekTo(savedPosition);
+        } else if (mediaPlayer != null) {
+            updateUI(); // met à jour l’UI sans recharger
+        }
+
 
         mediaContainer.setOnClickListener(v -> {
             showingLyrics = !showingLyrics;
@@ -174,4 +185,54 @@ public class PlayerFragment extends Fragment {
         boolean liked = prefs.getBoolean(title, false);
         likeButton.setImageResource(liked ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star);
     }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (mediaPlayer != null) {
+            int position = mediaPlayer.getCurrentPosition();
+            SharedPreferences prefs = requireContext().getSharedPreferences("PLAYER_STATE", Context.MODE_PRIVATE);
+            prefs.edit()
+                    .putInt("currentIndex", currentIndex)
+                    .putInt("currentPosition", position)
+                    .apply();
+        }
+    }
+
+    private void updateUI() {
+        Song song = songList.get(currentIndex);
+        title.setText(song.title);
+        lyrics.setText(song.lyrics);
+        updateLikeIcon(song.title);
+        cover.setVisibility(View.VISIBLE);
+        lyricsScroll.setVisibility(View.GONE);
+        showingLyrics = false;
+
+        // Recharge l'image sans recréer le player
+        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
+        try {
+            URL url = new URL("http://edu.info06.net/lyrics/images/" + song.cover);
+            InputStream input = url.openStream();
+            Bitmap bitmap = BitmapFactory.decodeStream(input);
+            cover.setImageBitmap(bitmap);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // Recharge la seekBar
+        seekBar.setMax(mediaPlayer.getDuration());
+
+        updateSeekBar = new Runnable() {
+            @Override
+            public void run() {
+                if (mediaPlayer != null) {
+                    seekBar.setProgress(mediaPlayer.getCurrentPosition());
+                    handler.postDelayed(this, 1000);
+                }
+            }
+        };
+        handler.post(updateSeekBar);
+    }
+
+
 }
