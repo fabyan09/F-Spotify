@@ -34,7 +34,7 @@ public class PlayerFragment extends Fragment {
 
     private ImageView cover;
     private ScrollView lyricsScroll;
-    private TextView lyrics, title;
+    private TextView lyrics, title, artistAlbumText;
     private ImageButton play, next, prev, forward, rewind, likeButton;
     private SeekBar seekBar;
     private Handler handler = new Handler();
@@ -48,6 +48,7 @@ public class PlayerFragment extends Fragment {
         lyrics = view.findViewById(R.id.lyrics_text);
         lyricsScroll = view.findViewById(R.id.lyrics_scroll);
         title = view.findViewById(R.id.title_text);
+        artistAlbumText = view.findViewById(R.id.artist_album_text);
         play = view.findViewById(R.id.play_button);
         next = view.findViewById(R.id.next_button);
         prev = view.findViewById(R.id.prev_button);
@@ -157,6 +158,7 @@ public class PlayerFragment extends Fragment {
 
         Song song = songList.get(index);
         title.setText(song.title);
+        artistAlbumText.setText(song.getArtist() + " - " + song.getAlbum());
         lyrics.setText(song.lyrics.replace(";", "\n"));
 
         StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());

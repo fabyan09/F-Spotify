@@ -46,6 +46,15 @@
         android:textSize="20sp"
         android:textStyle="bold" />
 
+    <TextView
+        android:id="@+id/artist_album_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textSize="16sp"
+        android:textStyle="italic"
+        android:textColor="@android:color/black" />
+
     <!-- Bouton Like -->
     <ImageButton
         android:id="@+id/like_button"
@@ -74,35 +83,45 @@
             android:id="@+id/rewind_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_media_rew"
-            android:contentDescription="Reculer 10s" />
+            android:contentDescription="Reculer 10s"
+            android:layout_margin="8dp"/>
 
         <ImageButton
             android:id="@+id/prev_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_media_previous"
-            android:contentDescription="Précédent" />
+            android:contentDescription="Précédent"
+            android:layout_margin="8dp"/>
 
         <ImageButton
             android:id="@+id/play_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_media_play"
-            android:contentDescription="Lecture" />
+            android:contentDescription="Lecture"
+            android:layout_margin="8dp"/>
 
         <ImageButton
             android:id="@+id/next_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_media_next"
-            android:contentDescription="Suivant" />
+            android:contentDescription="Suivant"
+            android:layout_margin="8dp"/>
 
         <ImageButton
             android:id="@+id/forward_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_media_ff"
-            android:contentDescription="Avancer 10s" />
+            android:contentDescription="Avancer 10s"
+            android:layout_margin="8dp"/>
     </LinearLayout>
 </LinearLayout>

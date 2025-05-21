@@ -62,11 +62,17 @@ public class LikedSongAdapter extends RecyclerView.Adapter<LikedSongAdapter.View
         holder.itemView.setOnClickListener(v -> {
             if (context instanceof MainActivity) {
                 MainActivity activity = (MainActivity) context;
-                activity.getPlayerFragment().playSong(song);
+                PlayerFragment playerFragment = activity.getPlayerFragment();
 
-                // changer l'onglet actif
-                BottomNavigationView nav = activity.findViewById(R.id.bottom_navigation);
-                nav.setSelectedItemId(R.id.nav_player);
+                if (playerFragment != null) {
+                    playerFragment.playSong(song);
+
+                    // Changer l'onglet actif
+                    BottomNavigationView nav = activity.findViewById(R.id.bottom_navigation);
+                    nav.setSelectedItemId(R.id.nav_player);
+                } else {
+                    Toast.makeText(context, "Player non disponible", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 

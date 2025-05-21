@@ -15,4 +15,12 @@ public class Song {
         this.mp3 = mp3;
         this.duration = duration;
     }
+
+    public String getAlbum() {
+        return album;
+    }
+
+    public String getArtist() {
+        return artist;
+    }
 }
