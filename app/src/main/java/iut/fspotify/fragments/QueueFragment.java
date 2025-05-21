@@ -35,7 +35,9 @@ public class QueueFragment extends Fragment {
 
         songList = CSVParser.parseCSV(); // Charger les titres depuis le CSV
         filteredList.addAll(songList); // Initialiser la liste filtrée
-        adapter = new QueueAdapter(filteredList);
+        adapter = new QueueAdapter(filteredList, song -> {
+            PlayerFragment.playSelectedSong(requireContext(), song);
+        });
         recyclerView.setAdapter(adapter);
 
         SearchView searchView = view.findViewById(R.id.search_view);

@@ -22,6 +22,25 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        bottomNav.setOnItemSelectedListener(item -> {
+            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+
+            int itemId = item.getItemId();
+
+            if (itemId == R.id.nav_player) {
+                transaction.hide(activeFragment).show(playerFragment);
+                activeFragment = playerFragment;
+            } else if (itemId == R.id.nav_queue) {
+                transaction.hide(activeFragment).show(queueFragment);
+                activeFragment = queueFragment;
+            } else if (itemId == R.id.nav_library) {
+                transaction.hide(activeFragment).show(libraryFragment);
+                activeFragment = libraryFragment;
+            }
+
+            transaction.commit();
+            return true;
+        });
 
         // Ajouter tous les fragments une seule fois
         getSupportFragmentManager().beginTransaction()
@@ -57,6 +76,17 @@ public class MainActivity extends AppCompatActivity {
 
     public PlayerFragment getPlayerFragment() {
         return playerFragment;
+    }
+
+    public void showPlayerFragment() {
+        getSupportFragmentManager().beginTransaction()
+                .hide(activeFragment)
+                .show(playerFragment)
+                .commit();
+        activeFragment = playerFragment;
+
+        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        bottomNav.setSelectedItemId(R.id.nav_player);
     }
 
 }

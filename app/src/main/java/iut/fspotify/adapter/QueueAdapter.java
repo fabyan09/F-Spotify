@@ -21,9 +21,15 @@ import iut.fspotify.model.Song;
 public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHolder> {
 
     private final List<Song> songList;
+    private final OnItemClickListener listener;
 
-    public QueueAdapter(List<Song> songList) {
+    public interface OnItemClickListener {
+        void onItemClick(Song song);
+    }
+
+    public QueueAdapter(List<Song> songList, OnItemClickListener listener) {
         this.songList = songList;
+        this.listener = listener;
     }
 
     @NonNull
@@ -39,7 +45,7 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
         holder.titleTextView.setText(song.getTitle());
         holder.artistTextView.setText(song.getArtist());
 
-        // Chargement de l'image depuis l'URL
+        // Chargement de l'image
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
         try {
@@ -51,6 +57,9 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
             e.printStackTrace();
             holder.coverImageView.setImageResource(R.drawable.placeholder);
         }
+
+        // Gestion du clic
+        holder.itemView.setOnClickListener(v -> listener.onItemClick(song));
     }
 
     @Override

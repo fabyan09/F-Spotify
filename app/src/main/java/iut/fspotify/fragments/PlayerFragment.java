@@ -20,6 +20,8 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
+
+import iut.fspotify.MainActivity;
 import iut.fspotify.R;
 import iut.fspotify.model.Song;
 import iut.fspotify.utils.CSVParser;
@@ -169,15 +171,24 @@ public class PlayerFragment extends Fragment {
             cover.setImageBitmap(bitmap);
         } catch (Exception e) {
             e.printStackTrace();
+            cover.setImageResource(R.drawable.placeholder); // Image par défaut
         }
 
         mediaPlayer = new MediaPlayer();
         try {
             mediaPlayer.setDataSource("http://edu.info06.net/lyrics/mp3/" + song.mp3);
-            mediaPlayer.prepare(); // ne pas auto-play
-            play.setImageResource(android.R.drawable.ic_media_play);
+            mediaPlayer.setOnPreparedListener(mp -> {
+                seekBar.setMax(mediaPlayer.getDuration());
+                play.setImageResource(android.R.drawable.ic_media_play);
+            });
+            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                return true;
+            });
+            mediaPlayer.prepareAsync(); // Préparation asynchrone
         } catch (Exception e) {
             e.printStackTrace();
+            Toast.makeText(getContext(), "URL invalide, lecture impossible", Toast.LENGTH_SHORT).show();
+            play.setEnabled(false); // Désactiver le bouton play
         }
 
         seekBar.setMax(mediaPlayer.getDuration());
@@ -236,6 +247,19 @@ public class PlayerFragment extends Fragment {
             // Sélectionner onglet player
             BottomNavigationView nav = activity.findViewById(R.id.bottom_navigation);
             nav.setSelectedItemId(R.id.nav_player);
+        }
+    }
+    public static void playSelectedSong(Context context, Song song) {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+
+        if (context instanceof MainActivity) {
+            MainActivity activity = (MainActivity) context;
+            activity.getPlayerFragment().playSong(song); // Charge et joue la chanson
+            activity.showPlayerFragment(); // Affiche le PlayerFragment
         }
     }
 
