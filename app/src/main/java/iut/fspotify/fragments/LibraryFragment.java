@@ -39,19 +39,21 @@ public class LibraryFragment extends Fragment {
         List<Song> allSongs = CSVParser.parseCSV();
 
         for (Song song : allSongs) {
-            if (prefs.getBoolean(song.title, false)) {
+            String key = song.title.trim().toLowerCase();
+            if (prefs.getBoolean(key, false)) {
                 likedSongs.add(song);
             }
         }
 
-        recyclerView.setAdapter(new LikedSongAdapter(likedSongs));
+
+        recyclerView.setAdapter(new LikedSongAdapter(getContext(), likedSongs));
         return view;
     }
 
     private static class LikedSongAdapter extends RecyclerView.Adapter<LikedSongAdapter.ViewHolder> {
         private final List<Song> songs;
 
-        public LikedSongAdapter(List<Song> songs) {
+        public LikedSongAdapter(Context context, List<Song> songs) {
             this.songs = songs;
         }
 
@@ -98,4 +100,27 @@ public class LibraryFragment extends Fragment {
             }
         }
     }
+    @Override
+    public void onResume() {
+        super.onResume();
+        refreshLikedSongs();
+    }
+
+    private void refreshLikedSongs() {
+        SharedPreferences prefs = requireContext().getSharedPreferences("LIKED_SONGS", Context.MODE_PRIVATE);
+        List<Song> allSongs = CSVParser.parseCSV();
+        List<Song> likedSongs = new ArrayList<>();
+
+        for (Song song : allSongs) {
+            String key = song.title.trim().toLowerCase();
+            if (prefs.getBoolean(key, false)) {
+                likedSongs.add(song);
+            }
+        }
+
+        RecyclerView recyclerView = requireView().findViewById(R.id.liked_recycler_view);
+        recyclerView.setAdapter(new LikedSongAdapter(getContext(), likedSongs));
+    }
+
+
 }

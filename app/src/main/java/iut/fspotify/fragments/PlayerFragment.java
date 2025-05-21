@@ -11,7 +11,12 @@ import android.os.StrictMode;
 import android.util.Log;
 import android.view.*;
 import android.widget.*;
+
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+
+import com.google.android.material.bottomnavigation.BottomNavigationView;
+
 import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
@@ -192,9 +197,44 @@ public class PlayerFragment extends Fragment {
         showingLyrics = false;
     }
 
+    public void playSong(Song song) {
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.release();
+        }
+        songList = List.of(song);
+        currentIndex = 0;
+        loadSong(0);
+    }
+
+
     private void updateLikeIcon(String key) {
         boolean liked = prefs.getBoolean(key, false);
         Log.d("PLAYER", "updateLikeIcon: " + key + " = " + liked);
         likeButton.setImageResource(liked ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star);
     }
+
+    public static void playExternalSong(Context context, Song song) {
+        currentIndex = 0; // ou -1 si besoin
+        songList = List.of(song); // on charge uniquement cette chanson
+        if (mediaPlayer != null) {
+            mediaPlayer.stop();
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+
+        // On force le retour au PlayerFragment
+        if (context instanceof AppCompatActivity) {
+            AppCompatActivity activity = (AppCompatActivity) context;
+            PlayerFragment fragment = new PlayerFragment();
+            activity.getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, fragment)
+                    .commit();
+
+            // Sélectionner onglet player
+            BottomNavigationView nav = activity.findViewById(R.id.bottom_navigation);
+            nav.setSelectedItemId(R.id.nav_player);
+        }
+    }
+
 }

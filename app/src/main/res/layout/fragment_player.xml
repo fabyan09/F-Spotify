@@ -3,7 +3,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="16dp"
-    android:gravity="center_horizontal">
+    android:gravity="center_horizontal"
+    android:background="@drawable/wallpaper">
+    >
 
     <!-- Zone commune pochette / paroles -->
     <FrameLayout
@@ -16,7 +18,7 @@
             android:id="@+id/cover_image"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:scaleType="centerCrop" />
+            android:scaleType="fitCenter" />
 
         <ScrollView
             android:id="@+id/lyrics_scroll"

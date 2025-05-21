@@ -54,4 +54,9 @@ public class MainActivity extends AppCompatActivity {
         // Sélectionner le fragment par défaut
         bottomNav.setSelectedItemId(R.id.nav_player);
     }
+
+    public PlayerFragment getPlayerFragment() {
+        return playerFragment;
+    }
+
 }
