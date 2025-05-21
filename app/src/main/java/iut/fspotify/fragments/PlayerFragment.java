@@ -36,7 +36,7 @@ public class PlayerFragment extends Fragment {
 
     private ImageView cover;
     private ScrollView lyricsScroll;
-    private TextView lyrics, title, artistAlbumText;
+    private TextView lyrics, title, artistAlbumText, total_duration, current_time;
     private ImageButton play, next, prev, forward, rewind, likeButton;
     private SeekBar seekBar;
     private Handler handler = new Handler();
@@ -58,6 +58,8 @@ public class PlayerFragment extends Fragment {
         rewind = view.findViewById(R.id.rewind_button);
         likeButton = view.findViewById(R.id.like_button);
         seekBar = view.findViewById(R.id.seek_bar);
+        current_time = view.findViewById(R.id.current_time); // Initialisation correcte
+        total_duration = view.findViewById(R.id.total_duration); // Initialisation correcte
         FrameLayout mediaContainer = view.findViewById(R.id.media_container);
 
         prefs = requireContext().getSharedPreferences("LIKED_SONGS", Context.MODE_PRIVATE);
@@ -81,8 +83,6 @@ public class PlayerFragment extends Fragment {
             lyricsScroll.setVisibility(View.GONE);
             cover.setVisibility(View.VISIBLE);
         });
-
-
 
         play.setOnClickListener(v -> {
             if (mediaPlayer != null) {
@@ -151,6 +151,8 @@ public class PlayerFragment extends Fragment {
     }
 
     private void loadSong(int index) {
+        boolean wasPlaying = mediaPlayer != null && mediaPlayer.isPlaying();
+
         if (mediaPlayer != null) {
             handler.removeCallbacks(updateSeekBar);
             mediaPlayer.stop();
@@ -162,6 +164,8 @@ public class PlayerFragment extends Fragment {
         title.setText(song.title);
         artistAlbumText.setText(song.getArtist() + " - " + song.getAlbum());
         lyrics.setText(song.lyrics.replace(";", "\n"));
+        total_duration.setText(formatTime((int) song.duration * 1000));
+        current_time.setText("0:00");
 
         StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
         try {
@@ -179,7 +183,28 @@ public class PlayerFragment extends Fragment {
             mediaPlayer.setDataSource("http://edu.info06.net/lyrics/mp3/" + song.mp3);
             mediaPlayer.setOnPreparedListener(mp -> {
                 seekBar.setMax(mediaPlayer.getDuration());
-                play.setImageResource(android.R.drawable.ic_media_play);
+                play.setImageResource(android.R.drawable.ic_media_play); // Icône de lecture par défaut
+
+                // Afficher la durée totale
+                int duration = mediaPlayer.getDuration();
+                total_duration.setText(formatTime(duration));
+
+                if (wasPlaying) {
+                    mediaPlayer.start(); // Reprendre la lecture si elle était en cours
+                    play.setImageResource(android.R.drawable.ic_media_pause); // Icône de pause
+                }
+            });
+            mediaPlayer.setOnCompletionListener(mp -> {
+                if (currentIndex < songList.size() - 1) {
+                    currentIndex++;
+                    loadSong(currentIndex);
+
+                    // Démarrer automatiquement la lecture après préparation
+                    mediaPlayer.setOnPreparedListener(mpPrepared -> {
+                        mediaPlayer.start();
+                        play.setImageResource(android.R.drawable.ic_media_pause); // Mettre à jour l'icône
+                    });
+                }
             });
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
                 return true;
@@ -191,13 +216,14 @@ public class PlayerFragment extends Fragment {
             play.setEnabled(false); // Désactiver le bouton play
         }
 
-        seekBar.setMax(mediaPlayer.getDuration());
-
         updateSeekBar = new Runnable() {
             @Override
             public void run() {
                 if (mediaPlayer != null) {
-                    seekBar.setProgress(mediaPlayer.getCurrentPosition());
+                    // Mettre à jour le temps actuel
+                    int currentPosition = mediaPlayer.getCurrentPosition();
+                    current_time.setText(formatTime(currentPosition));
+                    seekBar.setProgress(currentPosition);
                     handler.postDelayed(this, 1000);
                 }
             }
@@ -208,6 +234,13 @@ public class PlayerFragment extends Fragment {
         cover.setVisibility(View.VISIBLE);
         lyricsScroll.setVisibility(View.GONE);
         showingLyrics = false;
+    }
+
+    // Méthode utilitaire pour formater le temps en mm:ss
+    private String formatTime(int millis) {
+        int minutes = (millis / 1000) / 60;
+        int seconds = (millis / 1000) % 60;
+        return String.format("%d:%02d", minutes, seconds);
     }
 
     public void playSong(Song song) {
