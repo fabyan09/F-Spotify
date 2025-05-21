@@ -21,9 +21,10 @@ import iut.fspotify.utils.CSVParser;
 
 public class PlayerFragment extends Fragment {
     private static MediaPlayer mediaPlayer;
-    private static boolean showingLyrics = false;
-    private static int currentIndex = 0;
     private static List<Song> songList;
+    private static int currentIndex = 0;
+
+    private boolean showingLyrics = false;
     private SharedPreferences prefs;
 
     private ImageView cover;
@@ -57,23 +58,23 @@ public class PlayerFragment extends Fragment {
             songList = CSVParser.parseCSV();
         }
 
-        SharedPreferences prefs = requireContext().getSharedPreferences("PLAYER_STATE", Context.MODE_PRIVATE);
-        currentIndex = prefs.getInt("currentIndex", 0);
-        int savedPosition = prefs.getInt("currentPosition", 0);
-
-        if (mediaPlayer == null && !songList.isEmpty()) {
+        if (!songList.isEmpty() && mediaPlayer == null) {
             loadSong(currentIndex);
-            mediaPlayer.seekTo(savedPosition);
-        } else if (mediaPlayer != null) {
-            updateUI(); // met à jour l’UI sans recharger
         }
-
 
         mediaContainer.setOnClickListener(v -> {
             showingLyrics = !showingLyrics;
             cover.setVisibility(showingLyrics ? View.GONE : View.VISIBLE);
             lyricsScroll.setVisibility(showingLyrics ? View.VISIBLE : View.GONE);
         });
+
+        lyrics.setOnClickListener(v -> {
+            showingLyrics = false;
+            lyricsScroll.setVisibility(View.GONE);
+            cover.setVisibility(View.VISIBLE);
+        });
+
+
 
         play.setOnClickListener(v -> {
             if (mediaPlayer != null) {
@@ -86,7 +87,6 @@ public class PlayerFragment extends Fragment {
                 }
             }
         });
-
 
         next.setOnClickListener(v -> {
             if (currentIndex < songList.size() - 1) {
@@ -119,10 +119,13 @@ public class PlayerFragment extends Fragment {
         likeButton.setOnClickListener(v -> {
             if (songList != null && !songList.isEmpty()) {
                 Song song = songList.get(currentIndex);
-                boolean alreadyLiked = prefs.getBoolean(song.title, false);
-                prefs.edit().putBoolean(song.title, !alreadyLiked).apply();
+                String key = song.title.trim().toLowerCase();
+
+                boolean alreadyLiked = prefs.getBoolean(key, false);
+                prefs.edit().putBoolean(key, !alreadyLiked).apply();
+                updateLikeIcon(key);
+
                 Toast.makeText(getContext(), alreadyLiked ? "Retiré des likés" : "Ajouté aux likés", Toast.LENGTH_SHORT).show();
-                updateLikeIcon(song.title);
             }
         });
 
@@ -149,7 +152,7 @@ public class PlayerFragment extends Fragment {
 
         Song song = songList.get(index);
         title.setText(song.title);
-        lyrics.setText(song.lyrics);
+        lyrics.setText(song.lyrics.replace(";", "\n"));
 
         StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
         try {
@@ -164,12 +167,11 @@ public class PlayerFragment extends Fragment {
         mediaPlayer = new MediaPlayer();
         try {
             mediaPlayer.setDataSource("http://edu.info06.net/lyrics/mp3/" + song.mp3);
-            mediaPlayer.prepare(); // ⚠️ on ne fait PAS start()
+            mediaPlayer.prepare(); // ne pas auto-play
             play.setImageResource(android.R.drawable.ic_media_play);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
 
         seekBar.setMax(mediaPlayer.getDuration());
 
@@ -184,70 +186,15 @@ public class PlayerFragment extends Fragment {
         };
         handler.post(updateSeekBar);
 
-        updateLikeIcon(song.title);
+        updateLikeIcon(song.title.trim().toLowerCase());
         cover.setVisibility(View.VISIBLE);
         lyricsScroll.setVisibility(View.GONE);
         showingLyrics = false;
     }
 
-    private void updateLikeIcon(String title) {
-        boolean liked = prefs.getBoolean(title, false);
+    private void updateLikeIcon(String key) {
+        boolean liked = prefs.getBoolean(key, false);
+        Log.d("PLAYER", "updateLikeIcon: " + key + " = " + liked);
         likeButton.setImageResource(liked ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star);
     }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        if (mediaPlayer != null) {
-            int position = mediaPlayer.getCurrentPosition();
-            SharedPreferences prefs = requireContext().getSharedPreferences("PLAYER_STATE", Context.MODE_PRIVATE);
-            prefs.edit()
-                    .putInt("currentIndex", currentIndex)
-                    .putInt("currentPosition", position)
-                    .apply();
-        }
-    }
-
-    private void updateUI() {
-        Song song = songList.get(currentIndex);
-        title.setText(song.title);
-        lyrics.setText(song.lyrics);
-        updateLikeIcon(song.title);
-        cover.setVisibility(View.VISIBLE);
-        lyricsScroll.setVisibility(View.GONE);
-        showingLyrics = false;
-
-        // Recharge l'image sans recréer le player
-        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
-        try {
-            URL url = new URL("http://edu.info06.net/lyrics/images/" + song.cover);
-            InputStream input = url.openStream();
-            Bitmap bitmap = BitmapFactory.decodeStream(input);
-            cover.setImageBitmap(bitmap);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        // Recharge la seekBar
-        seekBar.setMax(mediaPlayer.getDuration());
-
-        updateSeekBar = new Runnable() {
-            @Override
-            public void run() {
-                if (mediaPlayer != null) {
-                    seekBar.setProgress(mediaPlayer.getCurrentPosition());
-                    handler.postDelayed(this, 1000);
-                }
-            }
-        };
-        handler.post(updateSeekBar);
-        if (mediaPlayer.isPlaying()) {
-            play.setImageResource(android.R.drawable.ic_media_pause);
-        } else {
-            play.setImageResource(android.R.drawable.ic_media_play);
-        }
-
-    }
-
-
 }

@@ -28,8 +28,11 @@
                 android:id="@+id/lyrics_text"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="8dp"
-                android:textSize="16sp" />
+                android:padding="16dp"
+                android:textSize="18sp"
+                android:gravity="center_horizontal"
+                android:textAlignment="center" />
+
         </ScrollView>
     </FrameLayout>
 
