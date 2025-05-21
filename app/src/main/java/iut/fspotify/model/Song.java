@@ -16,6 +16,18 @@ public class Song {
         this.duration = duration;
     }
 
+    public String getTitle() {
+        return title;
+    }
+    public String getLyrics() {
+        return lyrics;
+    }
+    public String getMp3() {
+        return mp3;
+    }
+    public String getCover() {
+        return cover;
+    }
     public String getAlbum() {
         return album;
     }
