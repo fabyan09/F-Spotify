@@ -63,7 +63,7 @@
         android:layout_height="wrap_content"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@android:drawable/btn_star"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="12dp"
         android:contentDescription="Like" />
 
     <!-- Timer et SeekBar -->

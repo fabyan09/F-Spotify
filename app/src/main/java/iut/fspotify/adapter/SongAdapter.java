@@ -37,7 +37,28 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
     @Override
     public void onBindViewHolder(@NonNull SongViewHolder holder, int position) {
         Song song = songs.get(position);
-        holder.bind(song, listener);
+
+        // Afficher le nom de l'album comme titre
+        holder.title.setText(song.getAlbum());
+
+        // Afficher l'artiste (optionnel)
+        holder.artist.setText(song.getArtist());
+
+        // Charger la cover de la première chanson associée
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+        try {
+            URL url = new URL("http://edu.info06.net/lyrics/images/" + song.getCover());
+            InputStream input = url.openStream();
+            Bitmap bitmap = BitmapFactory.decodeStream(input);
+            holder.cover.setImageBitmap(bitmap);
+        } catch (IOException e) {
+            e.printStackTrace();
+            holder.cover.setImageResource(R.drawable.placeholder); // Image par défaut
+        }
+
+        // Configurer le clic
+        holder.itemView.setOnClickListener(v -> listener.onItemClick(song));
     }
 
     @Override

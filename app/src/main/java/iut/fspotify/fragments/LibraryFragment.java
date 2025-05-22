@@ -56,7 +56,7 @@ public class LibraryFragment extends Fragment {
         recyclerView.setAdapter(adapter);
 
         // Configurer la flèche "back" dans la Toolbar
-        artistToolbar.setNavigationIcon(R.drawable.back_arrow); // Assurez-vous d'avoir une icône `ic_back_arrow` dans `res/drawable`
+        artistToolbar.setNavigationIcon(android.R.drawable.ic_menu_close_clear_cancel);
         artistToolbar.setNavigationOnClickListener(v -> {
             artistToolbar.setVisibility(View.GONE);
             searchView.setVisibility(View.VISIBLE);
@@ -123,6 +123,11 @@ public class LibraryFragment extends Fragment {
         filteredSongs.clear();
         filteredSongs.addAll(likedSongs);
         adapter.notifyDataSetChanged();
+
+        // Configurer le clic pour jouer les titres likés
+        adapter.setOnItemClickListener(song -> {
+            PlayerFragment.playSelectedSong(requireContext(), song); // Joue la chanson
+        });
     }
 
     private void updateButtonStates(Button activeButton, Button... allButtons) {
@@ -134,6 +139,11 @@ public class LibraryFragment extends Fragment {
 
     private void showLikedSongs() {
         loadLikedSongs();
+
+        // Configurer le clic pour jouer les titres likés
+        adapter.setOnItemClickListener(song -> {
+            PlayerFragment.playSelectedSong(requireContext(), song); // Joue la chanson
+        });
     }
 
     private void showArtists() {
@@ -147,7 +157,7 @@ public class LibraryFragment extends Fragment {
 
         likedSongs.clear();
         likedSongs.addAll(artistDurations.entrySet().stream()
-                .sorted(Map.Entry.comparingByKey()) // Tri alphabétique
+                .sorted(Map.Entry.comparingByKey())
                 .map(entry -> new Song(entry.getKey(), "", "", "", "", "", "", entry.getValue()))
                 .collect(Collectors.toList()));
 
@@ -155,6 +165,7 @@ public class LibraryFragment extends Fragment {
         filteredSongs.addAll(likedSongs);
         adapter.notifyDataSetChanged();
 
+        // Configurer le clic pour afficher les chansons d'un artiste
         adapter.setOnItemClickListener(song -> showSongsByArtist(song.getTitle()));
     }
 
@@ -189,15 +200,70 @@ public class LibraryFragment extends Fragment {
         artistToolbar.setVisibility(View.VISIBLE);
         artistToolbar.setTitle(artist);
 
+        // Configurer le clic pour jouer les chansons de l'artiste
         adapter.setOnItemClickListener(song -> {
-            PlayerFragment.playSelectedSong(requireContext(), song);
+            PlayerFragment.playSelectedSong(requireContext(), song); // Joue la chanson
         });
     }
 
     private void showAlbums() {
+        Map<String, Song> albumToFirstSong = new HashMap<>();
+        List<Song> allSongs = CSVParser.parseCSV();
+
+        // Associer chaque album à la première chanson trouvée
+        for (Song song : allSongs) {
+            if (!albumToFirstSong.containsKey(song.getAlbum())) {
+                albumToFirstSong.put(song.getAlbum(), song);
+            }
+        }
+
         likedSongs.clear();
+        likedSongs.addAll(albumToFirstSong.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> {
+                    Song firstSong = entry.getValue();
+                    return new Song(
+                            entry.getKey(), // Nom de l'album comme titre
+                            entry.getKey(), // Nom de l'album
+                            firstSong.getArtist(), // Artiste
+                            firstSong.date, // Date
+                            firstSong.getCover(), // Cover de la première chanson
+                            firstSong.getLyrics(), // Lyrics
+                            firstSong.getMp3(), // MP3
+                            firstSong.duration // Durée
+                    );
+                })
+                .collect(Collectors.toList()));
+
         filteredSongs.clear();
+        filteredSongs.addAll(likedSongs);
         adapter.notifyDataSetChanged();
+
+        // Configurer le clic pour afficher les chansons d'un album
+        adapter.setOnItemClickListener(song -> showSongsByAlbum(song.getAlbum()));
+    }
+
+    private void showSongsByAlbum(String album) {
+        List<Song> allSongs = CSVParser.parseCSV();
+        likedSongs.clear();
+        for (Song song : allSongs) {
+            if (song.getAlbum().equals(album)) {
+                likedSongs.add(song);
+            }
+        }
+
+        filteredSongs.clear();
+        filteredSongs.addAll(likedSongs);
+        adapter.notifyDataSetChanged();
+
+        searchView.setVisibility(View.GONE);
+        artistToolbar.setVisibility(View.VISIBLE);
+        artistToolbar.setTitle(album);
+
+        // Configurer le clic pour jouer les chansons de l'album
+        adapter.setOnItemClickListener(song -> {
+            PlayerFragment.playSelectedSong(requireContext(), song); // Joue la chanson
+        });
     }
 
     @Override
