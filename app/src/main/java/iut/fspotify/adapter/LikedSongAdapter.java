@@ -7,26 +7,24 @@ import android.os.StrictMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.*;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.io.InputStream;
 import java.net.URL;
 import java.util.List;
 
-import iut.fspotify.MainActivity;
 import iut.fspotify.R;
-import iut.fspotify.fragments.PlayerFragment;
 import iut.fspotify.model.Song;
 
 public class LikedSongAdapter extends RecyclerView.Adapter<LikedSongAdapter.ViewHolder> {
 
     private final List<Song> likedSongs;
     private final Context context;
+    private OnItemClickListener listener;
 
     public LikedSongAdapter(Context context, List<Song> likedSongs) {
         this.context = context;
@@ -45,28 +43,35 @@ public class LikedSongAdapter extends RecyclerView.Adapter<LikedSongAdapter.View
         Song song = likedSongs.get(position);
         holder.title.setText(song.title);
         holder.artist.setText(song.artist);
-        holder.duration.setText(String.format("%.2f min", song.duration));
 
-        // Charger la pochette depuis l'URL
-        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
-        try {
-            URL url = new URL("http://edu.info06.net/lyrics/images/" + song.cover);
-            InputStream input = url.openStream();
-            Bitmap bitmap = BitmapFactory.decodeStream(input);
-            holder.cover.setImageBitmap(bitmap);
-        } catch (Exception e) {
-            e.printStackTrace();
+        // Afficher la durée uniquement si elle est disponible
+        if (song.duration > 0) {
+            holder.duration.setVisibility(View.VISIBLE);
+            holder.duration.setText(String.format("%.2f min", song.duration));
+        } else {
+            holder.duration.setVisibility(View.GONE);
         }
 
-        // Lancer le player à clic
-        holder.itemView.setOnClickListener(v -> {
-            if (context instanceof MainActivity) {
-                MainActivity activity = (MainActivity) context;
-                PlayerFragment.playSelectedSong(context, song);
+        // Charger la pochette uniquement si elle est disponible
+        if (song.cover != null && !song.cover.isEmpty()) {
+            StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
+            try {
+                URL url = new URL("http://edu.info06.net/lyrics/images/" + song.cover);
+                InputStream input = url.openStream();
+                Bitmap bitmap = BitmapFactory.decodeStream(input);
+                holder.cover.setImageBitmap(bitmap);
+            } catch (Exception e) {
+                e.printStackTrace();
+                holder.cover.setImageResource(R.drawable.placeholder); // Image par défaut
+            }
+        } else {
+            holder.cover.setImageResource(R.drawable.placeholder); // Image par défaut
+        }
 
-                // Changer l'onglet actif
-                BottomNavigationView nav = activity.findViewById(R.id.bottom_navigation);
-                nav.setSelectedItemId(R.id.nav_player);
+        // Notifier le listener lors d'un clic
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onItemClick(song);
             }
         });
     }
@@ -87,5 +92,13 @@ public class LikedSongAdapter extends RecyclerView.Adapter<LikedSongAdapter.View
             artist = itemView.findViewById(R.id.item_artist);
             duration = itemView.findViewById(R.id.item_duration);
         }
+    }
+
+    public interface OnItemClickListener {
+        void onItemClick(Song song);
+    }
+
+    public void setOnItemClickListener(OnItemClickListener listener) {
+        this.listener = listener;
     }
 }
