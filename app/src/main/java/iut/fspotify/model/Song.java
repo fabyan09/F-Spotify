@@ -1,6 +1,8 @@
 package iut.fspotify.model;
 
-public class Song {
+import java.io.Serializable;
+
+public class Song implements Serializable {
     public String title, album, artist, date, cover, lyrics, mp3;
     public float duration;
 
@@ -31,7 +33,6 @@ public class Song {
     public String getAlbum() {
         return album;
     }
-
     public String getArtist() {
         return artist;
     }
