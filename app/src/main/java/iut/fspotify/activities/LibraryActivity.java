@@ -86,6 +86,7 @@ public class LibraryActivity extends AppCompatActivity {
         Intent intent = new Intent(this, MusicPlayerService.class);
         startService(intent);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        overridePendingTransition(0, 0); // Désactive l'animation
 
         RecyclerView recyclerView = findViewById(R.id.liked_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));

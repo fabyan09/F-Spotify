@@ -71,6 +71,7 @@ public class QueueActivity extends AppCompatActivity {
         Intent intent = new Intent(this, MusicPlayerService.class);
         startService(intent);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        overridePendingTransition(0, 0); // Désactive l'animation
 
         songList = CSVParser.parseCSV(); // Charger les titres depuis le CSV
         filteredList.addAll(songList); // Initialiser la liste filtrée
@@ -83,6 +84,7 @@ public class QueueActivity extends AppCompatActivity {
                 // Naviguer vers le player
                 Intent playerIntent = new Intent(this, PlayerActivity.class);
                 startActivity(playerIntent);
+                overridePendingTransition(0, 0); // Désactive l'animation
             }
         });
         recyclerView.setAdapter(adapter);
@@ -110,6 +112,7 @@ public class QueueActivity extends AppCompatActivity {
                 if (id == R.id.nav_player) {
                     Intent playerIntent = new Intent(QueueActivity.this, PlayerActivity.class);
                     startActivity(playerIntent);
+                    overridePendingTransition(0, 0); // Désactive l'animation
                     return true;
                 } else if (id == R.id.nav_queue) {
                     // Déjà sur cette activité
@@ -117,6 +120,7 @@ public class QueueActivity extends AppCompatActivity {
                 } else if (id == R.id.nav_library) {
                     Intent libraryIntent = new Intent(QueueActivity.this, LibraryActivity.class);
                     startActivity(libraryIntent);
+                    overridePendingTransition(0, 0); // Désactive l'animation
                     return true;
                 }
                 return false;

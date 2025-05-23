@@ -73,13 +73,14 @@
             <!-- Bouton Like -->
             <ImageButton
                 android:id="@+id/like_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/btn_star"
+                android:src="@drawable/empty_like"
                 android:layout_marginTop="20dp"
-                android:contentDescription="Like"
-                android:layout_gravity="center_horizontal" />
+                android:contentDescription="like"
+                android:layout_gravity="center_horizontal"
+                android:scaleType="fitCenter"/>
 
             <!-- Timer et SeekBar -->
             <LinearLayout

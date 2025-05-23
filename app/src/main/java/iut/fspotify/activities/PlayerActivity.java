@@ -134,6 +134,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
         Intent intent = new Intent(this, MusicPlayerService.class);
         startService(intent);
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        overridePendingTransition(0, 0); // Désactive l'animation
 
         // Configuration des listeners
         mediaContainer.setOnClickListener(v -> {
@@ -274,7 +275,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
     private void updateLikeIcon(String key) {
         boolean liked = prefs.getBoolean(key, false);
         Log.d(TAG, "updateLikeIcon: " + key + " = " + liked);
-        likeButton.setImageResource(liked ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star);
+        likeButton.setImageResource(liked ? R.drawable.like : R.drawable.empty_like);
     }
 
     @Override
@@ -292,6 +293,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
         Intent intent = new Intent(context, PlayerActivity.class);
         intent.putExtra("SONG", song);
         context.startActivity(intent);
+
     }
 
     // Implémentation des callbacks du service
