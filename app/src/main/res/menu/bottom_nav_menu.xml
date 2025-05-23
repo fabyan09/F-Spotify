@@ -4,14 +4,12 @@
         android:id="@+id/nav_player"
         android:icon="@android:drawable/ic_media_play"
         android:title="Lecture" />
-
     <item
         android:id="@+id/nav_queue"
-        android:icon="@android:drawable/ic_menu_agenda"
-        android:title="File d'attente" />
-
+        android:icon="@drawable/queue_music"
+        android:title="Titres" />
     <item
         android:id="@+id/nav_library"
-        android:icon="@android:drawable/ic_menu_gallery"
+        android:icon="@drawable/library_books"
         android:title="Bibliothèque" />
 </menu>

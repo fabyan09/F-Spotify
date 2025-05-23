@@ -1,15 +1,24 @@
 package iut.fspotify.activities;
 
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.text.TextUtils;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.SearchView;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +26,7 @@ import java.util.List;
 import iut.fspotify.R;
 import iut.fspotify.adapter.QueueAdapter;
 import iut.fspotify.model.Song;
+import iut.fspotify.services.MusicPlayerService;
 import iut.fspotify.utils.CSVParser;
 
 public class QueueActivity extends AppCompatActivity {
@@ -24,7 +34,26 @@ public class QueueActivity extends AppCompatActivity {
     private QueueAdapter adapter;
     private List<Song> songList = new ArrayList<>();
     private List<Song> filteredList = new ArrayList<>();
-    private ImageButton navPlayerButton, navQueueButton, navLibraryButton;
+    private BottomNavigationView bottomNavigationView;
+    
+    // Service de lecture musicale
+    private MusicPlayerService musicService;
+    private boolean serviceBound = false;
+    
+    // Connexion au service
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MusicPlayerService.MusicBinder binder = (MusicPlayerService.MusicBinder) service;
+            musicService = binder.getService();
+            serviceBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            serviceBound = false;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -34,15 +63,27 @@ public class QueueActivity extends AppCompatActivity {
         RecyclerView recyclerView = findViewById(R.id.queue_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        // Initialisation des boutons de navigation
-        navPlayerButton = findViewById(R.id.nav_player_button);
-        navQueueButton = findViewById(R.id.nav_queue_button);
-        navLibraryButton = findViewById(R.id.nav_library_button);
+        // Initialisation du menu de navigation
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+        bottomNavigationView.setSelectedItemId(R.id.nav_queue);
+
+        // Démarrer et lier le service
+        Intent intent = new Intent(this, MusicPlayerService.class);
+        startService(intent);
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
 
         songList = CSVParser.parseCSV(); // Charger les titres depuis le CSV
         filteredList.addAll(songList); // Initialiser la liste filtrée
         adapter = new QueueAdapter(filteredList, song -> {
-            PlayerActivity.playSong(this, song);
+            if (serviceBound) {
+                // Charger la chanson dans le service
+                musicService.loadSong(song);
+                musicService.playPause(); // Démarrer la lecture
+                
+                // Naviguer vers le player
+                Intent playerIntent = new Intent(this, PlayerActivity.class);
+                startActivity(playerIntent);
+            }
         });
         recyclerView.setAdapter(adapter);
 
@@ -60,21 +101,26 @@ public class QueueActivity extends AppCompatActivity {
             }
         });
 
-        // Configuration de la navigation
-        navPlayerButton.setOnClickListener(v -> {
-            Intent intent = new Intent(this, PlayerActivity.class);
-            startActivity(intent);
-            finish(); // Fermer l'activité actuelle
-        });
-
-        navQueueButton.setOnClickListener(v -> {
-            // Déjà sur cette activité, ne rien faire
-        });
-
-        navLibraryButton.setOnClickListener(v -> {
-            Intent intent = new Intent(this, LibraryActivity.class);
-            startActivity(intent);
-            finish(); // Fermer l'activité actuelle
+        // Configuration de la navigation avec if/else au lieu de switch/case
+        bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                int id = item.getItemId();
+                
+                if (id == R.id.nav_player) {
+                    Intent playerIntent = new Intent(QueueActivity.this, PlayerActivity.class);
+                    startActivity(playerIntent);
+                    return true;
+                } else if (id == R.id.nav_queue) {
+                    // Déjà sur cette activité
+                    return true;
+                } else if (id == R.id.nav_library) {
+                    Intent libraryIntent = new Intent(QueueActivity.this, LibraryActivity.class);
+                    startActivity(libraryIntent);
+                    return true;
+                }
+                return false;
+            }
         });
     }
 
@@ -91,5 +137,14 @@ public class QueueActivity extends AppCompatActivity {
             }
         }
         adapter.notifyDataSetChanged();
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (serviceBound) {
+            unbindService(serviceConnection);
+            serviceBound = false;
+        }
     }
 }

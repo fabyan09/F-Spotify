@@ -1,19 +1,26 @@
 package iut.fspotify.activities;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.text.TextUtils;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.SearchView;
 import android.widget.Toolbar;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -24,6 +31,7 @@ import java.util.stream.Collectors;
 import iut.fspotify.R;
 import iut.fspotify.adapter.LikedSongAdapter;
 import iut.fspotify.model.Song;
+import iut.fspotify.services.MusicPlayerService;
 import iut.fspotify.utils.CSVParser;
 
 public class LibraryActivity extends AppCompatActivity {
@@ -38,7 +46,26 @@ public class LibraryActivity extends AppCompatActivity {
     private Button albumsButton;
     private SearchView searchView;
     private androidx.appcompat.widget.Toolbar artistToolbar;
-    private ImageButton navPlayerButton, navQueueButton, navLibraryButton;
+    private BottomNavigationView bottomNavigationView;
+    
+    // Service de lecture musicale
+    private MusicPlayerService musicService;
+    private boolean serviceBound = false;
+    
+    // Connexion au service
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MusicPlayerService.MusicBinder binder = (MusicPlayerService.MusicBinder) service;
+            musicService = binder.getService();
+            serviceBound = true;
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            serviceBound = false;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,10 +78,14 @@ public class LibraryActivity extends AppCompatActivity {
         searchView = findViewById(R.id.search_view);
         artistToolbar = findViewById(R.id.artist_toolbar);
         
-        // Initialisation des boutons de navigation
-        navPlayerButton = findViewById(R.id.nav_player_button);
-        navQueueButton = findViewById(R.id.nav_queue_button);
-        navLibraryButton = findViewById(R.id.nav_library_button);
+        // Initialisation du menu de navigation
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+        bottomNavigationView.setSelectedItemId(R.id.nav_library);
+
+        // Démarrer et lier le service
+        Intent intent = new Intent(this, MusicPlayerService.class);
+        startService(intent);
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
 
         RecyclerView recyclerView = findViewById(R.id.liked_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -104,21 +135,26 @@ public class LibraryActivity extends AppCompatActivity {
             }
         });
 
-        // Configuration de la navigation
-        navPlayerButton.setOnClickListener(v -> {
-            Intent intent = new Intent(this, PlayerActivity.class);
-            startActivity(intent);
-            finish(); // Fermer l'activité actuelle
-        });
-
-        navQueueButton.setOnClickListener(v -> {
-            Intent intent = new Intent(this, QueueActivity.class);
-            startActivity(intent);
-            finish(); // Fermer l'activité actuelle
-        });
-
-        navLibraryButton.setOnClickListener(v -> {
-            // Déjà sur cette activité, ne rien faire
+        // Configuration de la navigation avec if/else au lieu de switch/case
+        bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                int id = item.getItemId();
+                
+                if (id == R.id.nav_player) {
+                    Intent playerIntent = new Intent(LibraryActivity.this, PlayerActivity.class);
+                    startActivity(playerIntent);
+                    return true;
+                } else if (id == R.id.nav_queue) {
+                    Intent queueIntent = new Intent(LibraryActivity.this, QueueActivity.class);
+                    startActivity(queueIntent);
+                    return true;
+                } else if (id == R.id.nav_library) {
+                    // Déjà sur cette activité
+                    return true;
+                }
+                return false;
+            }
         });
 
         loadLikedSongs();
@@ -153,7 +189,15 @@ public class LibraryActivity extends AppCompatActivity {
 
         // Configurer le clic pour jouer les titres likés
         adapter.setOnItemClickListener(song -> {
-            PlayerActivity.playSong(this, song); // Joue la chanson
+            if (serviceBound) {
+                // Charger la chanson dans le service
+                musicService.loadSong(song);
+                musicService.playPause(); // Démarrer la lecture
+                
+                // Naviguer vers le player
+                Intent playerIntent = new Intent(this, PlayerActivity.class);
+                startActivity(playerIntent);
+            }
         });
     }
 
@@ -169,7 +213,15 @@ public class LibraryActivity extends AppCompatActivity {
 
         // Configurer le clic pour jouer les titres likés
         adapter.setOnItemClickListener(song -> {
-            PlayerActivity.playSong(this, song); // Joue la chanson
+            if (serviceBound) {
+                // Charger la chanson dans le service
+                musicService.loadSong(song);
+                musicService.playPause(); // Démarrer la lecture
+                
+                // Naviguer vers le player
+                Intent playerIntent = new Intent(this, PlayerActivity.class);
+                startActivity(playerIntent);
+            }
         });
     }
 
@@ -229,7 +281,46 @@ public class LibraryActivity extends AppCompatActivity {
 
         // Configurer le clic pour jouer les chansons de l'artiste
         adapter.setOnItemClickListener(song -> {
-            PlayerActivity.playSong(this, song); // Joue la chanson
+            if (serviceBound) {
+                // Charger la chanson dans le service
+                musicService.loadSong(song);
+                musicService.playPause(); // Démarrer la lecture
+                
+                // Naviguer vers le player
+                Intent playerIntent = new Intent(this, PlayerActivity.class);
+                startActivity(playerIntent);
+            }
+        });
+    }
+
+    private void showSongsByAlbum(String album) {
+        List<Song> allSongs = CSVParser.parseCSV();
+        likedSongs.clear();
+        for (Song song : allSongs) {
+            if (song.getAlbum().equals(album)) {
+                likedSongs.add(song);
+            }
+        }
+
+        filteredSongs.clear();
+        filteredSongs.addAll(likedSongs);
+        adapter.notifyDataSetChanged();
+
+        searchView.setVisibility(View.GONE);
+        artistToolbar.setVisibility(View.VISIBLE);
+        artistToolbar.setTitle(album);
+
+        // Configurer le clic pour jouer les chansons de l'album
+        adapter.setOnItemClickListener(song -> {
+            if (serviceBound) {
+                // Charger la chanson dans le service
+                musicService.loadSong(song);
+                musicService.playPause(); // Démarrer la lecture
+                
+                // Naviguer vers le player
+                Intent playerIntent = new Intent(this, PlayerActivity.class);
+                startActivity(playerIntent);
+            }
         });
     }
 
@@ -270,32 +361,14 @@ public class LibraryActivity extends AppCompatActivity {
         adapter.setOnItemClickListener(song -> showSongsByAlbum(song.getAlbum()));
     }
 
-    private void showSongsByAlbum(String album) {
-        List<Song> allSongs = CSVParser.parseCSV();
-        likedSongs.clear();
-        for (Song song : allSongs) {
-            if (song.getAlbum().equals(album)) {
-                likedSongs.add(song);
-            }
-        }
-
-        filteredSongs.clear();
-        filteredSongs.addAll(likedSongs);
-        adapter.notifyDataSetChanged();
-
-        searchView.setVisibility(View.GONE);
-        artistToolbar.setVisibility(View.VISIBLE);
-        artistToolbar.setTitle(album);
-
-        // Configurer le clic pour jouer les chansons de l'album
-        adapter.setOnItemClickListener(song -> {
-            PlayerActivity.playSong(this, song); // Joue la chanson
-        });
-    }
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        
+        if (serviceBound) {
+            unbindService(serviceConnection);
+            serviceBound = false;
+        }
 
         SharedPreferences prefs = getSharedPreferences("LIKED_SONGS", Context.MODE_PRIVATE);
         prefs.unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);

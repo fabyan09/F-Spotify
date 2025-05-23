@@ -2,155 +2,90 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="@drawable/wallpaper">
 
     <!-- Contenu principal -->
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_above="@+id/navigation_container"
-        android:orientation="vertical">
-
-        <SearchView
-            android:id="@+id/search_view"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:iconifiedByDefault="false"
-            android:queryHint="Rechercher un artiste" />
-
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/artist_toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            android:visibility="gone"
-            app:titleTextColor="#FFFFFF" />
+        android:layout_above="@+id/bottom_navigation">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="8dp">
+            android:orientation="vertical"
+            android:padding="16dp">
 
-            <Button
-                android:id="@+id/liked_songs_button"
-                android:layout_width="0dp"
+            <androidx.appcompat.widget.Toolbar
+                android:id="@+id/artist_toolbar"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:backgroundTint="@color/button_selector_active"
-                android:text="Titres likés" />
+                android:background="?attr/colorPrimary"
+                android:visibility="gone"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
 
-            <Button
-                android:id="@+id/artists_button"
-                android:layout_width="0dp"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:backgroundTint="@color/button_selector"
-                android:text="Artistes" />
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:padding="8dp">
 
-            <Button
-                android:id="@+id/albums_button"
-                android:layout_width="0dp"
+                <Button
+                    android:id="@+id/liked_songs_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginStart="4dp"
+                    android:text="Titres Likés"
+                    android:backgroundTint="#4CAF50" />
+
+                <Button
+                    android:id="@+id/artists_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginStart="4dp"
+                    android:text="Artiste"
+                    android:backgroundTint="#4CAF50" />
+
+                <Button
+                    android:id="@+id/albums_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginStart="4dp"
+                    android:text="Album"
+                    android:backgroundTint="#4CAF50" />
+            </LinearLayout>
+
+            <SearchView
+                android:id="@+id/search_view"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
-                android:layout_weight="1"
-                android:backgroundTint="@color/button_selector"
-                android:text="Albums" />
+                android:layout_margin="8dp"
+                android:queryHint="Rechercher un artiste"
+                android:iconifiedByDefault="false"
+                android:background="#33FFFFFF" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/liked_recycler_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="8dp" />
         </LinearLayout>
+    </ScrollView>
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/liked_recycler_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="8dp" />
-    </LinearLayout>
-
-    <!-- Navigation améliorée -->
-    <LinearLayout
-        android:id="@+id/navigation_container"
+    <!-- Menu de navigation moderne -->
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:background="#202020"
-        android:orientation="horizontal"
-        android:padding="8dp">
+        android:background="#4CAF50"
+        app:itemIconTint="@android:color/white"
+        app:itemTextColor="@android:color/white"
+        app:menu="@menu/bottom_nav_menu" />
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
-
-            <ImageButton
-                android:id="@+id/nav_player_button"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:padding="8dp"
-                android:src="@android:drawable/ic_media_play"
-                android:tint="#FFFFFF"
-                android:contentDescription="Lecture" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Lecture"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
-
-            <ImageButton
-                android:id="@+id/nav_queue_button"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:padding="8dp"
-                android:src="@android:drawable/ic_menu_agenda"
-                android:tint="#FFFFFF"
-                android:contentDescription="File d'attente" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Titres"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:orientation="vertical">
-
-            <ImageButton
-                android:id="@+id/nav_library_button"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:padding="8dp"
-                android:src="@android:drawable/ic_menu_gallery"
-                android:tint="#FFFFFF"
-                android:contentDescription="Bibliothèque" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Bibliothèque"
-                android:textColor="#FFFFFF"
-                android:textSize="12sp" />
-        </LinearLayout>
-    </LinearLayout>
 </RelativeLayout>

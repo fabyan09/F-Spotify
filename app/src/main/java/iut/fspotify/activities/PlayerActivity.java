@@ -1,15 +1,18 @@
 package iut.fspotify.activities;
 
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.StrictMode;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -19,7 +22,10 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.io.InputStream;
 import java.net.URL;
@@ -27,24 +33,74 @@ import java.util.List;
 
 import iut.fspotify.R;
 import iut.fspotify.model.Song;
+import iut.fspotify.services.MusicPlayerService;
 import iut.fspotify.utils.CSVParser;
 
-public class PlayerActivity extends AppCompatActivity {
-    private static MediaPlayer mediaPlayer;
+public class PlayerActivity extends AppCompatActivity implements MusicPlayerService.OnMusicPlayerListener {
+    private static final String TAG = "PlayerActivity";
+    
+    // Service de lecture musicale
+    private MusicPlayerService musicService;
+    private boolean serviceBound = false;
+    
+    // Liste des chansons
     private static List<Song> songList;
     private static int currentIndex = 0;
-
+    
+    // UI
     private boolean showingLyrics = false;
     private SharedPreferences prefs;
-
     private ImageView cover;
     private ScrollView lyricsScroll;
     private TextView lyrics, title, artistAlbumText, total_duration, current_time;
     private ImageButton play, next, prev, forward, rewind, likeButton;
-    private ImageButton navPlayerButton, navQueueButton, navLibraryButton;
     private SeekBar seekBar;
     private Handler handler = new Handler();
     private Runnable updateSeekBar;
+    private BottomNavigationView bottomNavigationView;
+    
+    // Connexion au service
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MusicPlayerService.MusicBinder binder = (MusicPlayerService.MusicBinder) service;
+            musicService = binder.getService();
+            serviceBound = true;
+            
+            // Enregistrer cette activité comme listener
+            musicService.addListener(PlayerActivity.this);
+            
+            // Vérifier si une chanson est déjà en cours de lecture
+            Song currentSong = musicService.getCurrentSong();
+            if (currentSong != null) {
+                // Mettre à jour l'UI avec la chanson en cours
+                updateUI(currentSong);
+                updatePlayPauseButton(musicService.isPlaying());
+            } else if (getIntent().hasExtra("SONG")) {
+                // Charger la chanson depuis l'intent
+                Song song = (Song) getIntent().getSerializableExtra("SONG");
+                if (song != null) {
+                    songList = List.of(song);
+                    currentIndex = 0;
+                    musicService.loadSong(song);
+                }
+            } else if (songList != null && !songList.isEmpty()) {
+                // Utiliser la liste existante
+                musicService.loadSong(songList.get(currentIndex));
+            } else {
+                // Charger la liste complète
+                songList = CSVParser.parseCSV();
+                if (!songList.isEmpty()) {
+                    musicService.loadSong(songList.get(currentIndex));
+                }
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            serviceBound = false;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,37 +124,16 @@ public class PlayerActivity extends AppCompatActivity {
         total_duration = findViewById(R.id.total_duration);
         FrameLayout mediaContainer = findViewById(R.id.media_container);
         
-        // Initialisation des boutons de navigation
-        navPlayerButton = findViewById(R.id.nav_player_button);
-        navQueueButton = findViewById(R.id.nav_queue_button);
-        navLibraryButton = findViewById(R.id.nav_library_button);
+        // Initialisation du menu de navigation
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+        bottomNavigationView.setSelectedItemId(R.id.nav_player);
 
         prefs = getSharedPreferences("LIKED_SONGS", Context.MODE_PRIVATE);
 
-        // Récupération de la chanson depuis l'intent si disponible
-        if (getIntent().hasExtra("SONG")) {
-            Song song = getIntent().getParcelableExtra("SONG");
-            if (song != null) {
-                // Correction: Toujours arrêter et libérer le lecteur précédent
-                if (mediaPlayer != null) {
-                    mediaPlayer.stop();
-                    mediaPlayer.release();
-                    mediaPlayer = null;
-                }
-                songList = List.of(song);
-                currentIndex = 0;
-                loadSong(currentIndex);
-            }
-        } else {
-            // Sinon, charger la liste complète
-            if (songList == null) {
-                songList = CSVParser.parseCSV();
-            }
-
-            if (!songList.isEmpty()) {
-                loadSong(currentIndex);
-            }
-        }
+        // Démarrer et lier le service
+        Intent intent = new Intent(this, MusicPlayerService.class);
+        startService(intent);
+        bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
 
         // Configuration des listeners
         mediaContainer.setOnClickListener(v -> {
@@ -114,49 +149,46 @@ public class PlayerActivity extends AppCompatActivity {
         });
 
         play.setOnClickListener(v -> {
-            if (mediaPlayer != null) {
-                if (mediaPlayer.isPlaying()) {
-                    mediaPlayer.pause();
-                    play.setImageResource(android.R.drawable.ic_media_play);
-                } else {
-                    mediaPlayer.start();
-                    play.setImageResource(android.R.drawable.ic_media_pause);
-                }
+            if (serviceBound) {
+                musicService.playPause();
             }
         });
 
         next.setOnClickListener(v -> {
             if (currentIndex < songList.size() - 1) {
                 currentIndex++;
-                loadSong(currentIndex);
+                if (serviceBound) {
+                    musicService.loadSong(songList.get(currentIndex));
+                }
             }
         });
 
         prev.setOnClickListener(v -> {
             if (currentIndex > 0) {
                 currentIndex--;
-                loadSong(currentIndex);
+                if (serviceBound) {
+                    musicService.loadSong(songList.get(currentIndex));
+                }
             }
         });
 
         forward.setOnClickListener(v -> {
-            if (mediaPlayer != null) {
-                int newPos = mediaPlayer.getCurrentPosition() + 10000;
-                mediaPlayer.seekTo(Math.min(newPos, mediaPlayer.getDuration()));
+            if (serviceBound) {
+                musicService.seekForward();
             }
         });
 
         rewind.setOnClickListener(v -> {
-            if (mediaPlayer != null) {
-                int newPos = mediaPlayer.getCurrentPosition() - 10000;
-                mediaPlayer.seekTo(Math.max(newPos, 0));
+            if (serviceBound) {
+                musicService.seekBackward();
             }
         });
 
+        // Correction du bug de like : utiliser la chanson actuelle du service
         likeButton.setOnClickListener(v -> {
-            if (songList != null && !songList.isEmpty()) {
-                Song song = songList.get(currentIndex);
-                String key = song.title.trim().toLowerCase();
+            if (serviceBound && musicService.getCurrentSong() != null) {
+                Song currentSong = musicService.getCurrentSong();
+                String key = currentSong.title.trim().toLowerCase();
 
                 boolean alreadyLiked = prefs.getBoolean(key, false);
                 prefs.edit().putBoolean(key, !alreadyLiked).apply();
@@ -169,8 +201,8 @@ public class PlayerActivity extends AppCompatActivity {
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && mediaPlayer != null) {
-                    mediaPlayer.seekTo(progress);
+                if (fromUser && serviceBound) {
+                    musicService.seekTo(progress);
                 }
             }
 
@@ -183,46 +215,37 @@ public class PlayerActivity extends AppCompatActivity {
             }
         });
 
-        // Configuration de la navigation
-        navPlayerButton.setOnClickListener(v -> {
-            // Déjà sur cette activité, ne rien faire
-        });
-
-        navQueueButton.setOnClickListener(v -> {
-            Intent intent = new Intent(this, QueueActivity.class);
-            startActivity(intent);
-            finish(); // Fermer l'activité actuelle
-        });
-
-        navLibraryButton.setOnClickListener(v -> {
-            Intent intent = new Intent(this, LibraryActivity.class);
-            startActivity(intent);
-            finish(); // Fermer l'activité actuelle
+        // Configuration de la navigation avec if/else au lieu de switch/case
+        bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                int id = item.getItemId();
+                
+                if (id == R.id.nav_player) {
+                    // Déjà sur cette activité
+                    return true;
+                } else if (id == R.id.nav_queue) {
+                    Intent queueIntent = new Intent(PlayerActivity.this, QueueActivity.class);
+                    startActivity(queueIntent);
+                    return true;
+                } else if (id == R.id.nav_library) {
+                    Intent libraryIntent = new Intent(PlayerActivity.this, LibraryActivity.class);
+                    startActivity(libraryIntent);
+                    return true;
+                }
+                return false;
+            }
         });
     }
 
-    private void loadSong(int index) {
-        boolean wasPlaying = mediaPlayer != null && mediaPlayer.isPlaying();
-
-        if (mediaPlayer != null) {
-            handler.removeCallbacks(updateSeekBar);
-            mediaPlayer.stop();
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
-
-        Song song = songList.get(index);
+    private void updateUI(Song song) {
         title.setText(song.title);
         artistAlbumText.setText(song.getArtist() + " - " + song.getAlbum());
         
-        // Correction: Centrer les paroles et assurer qu'elles sont scrollables
-        String formattedLyrics = song.lyrics.replace(";", "\n\n");
+        // Formater les paroles pour l'affichage
+        String formattedLyrics = song.lyrics.replace(";", "\n");
         lyrics.setText(formattedLyrics);
-        lyrics.setGravity(android.view.Gravity.CENTER);
         
-        total_duration.setText(formatTime((int) song.duration * 1000));
-        current_time.setText("0:00");
-
         StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
         try {
             URL url = new URL("http://edu.info06.net/lyrics/images/" + song.cover);
@@ -233,63 +256,12 @@ public class PlayerActivity extends AppCompatActivity {
             e.printStackTrace();
             cover.setImageResource(R.drawable.placeholder); // Image par défaut
         }
-
-        mediaPlayer = new MediaPlayer();
-        try {
-            mediaPlayer.setDataSource("http://edu.info06.net/lyrics/mp3/" + song.mp3);
-            mediaPlayer.setOnPreparedListener(mp -> {
-                seekBar.setMax(mediaPlayer.getDuration());
-                play.setImageResource(android.R.drawable.ic_media_play); // Icône de lecture par défaut
-
-                // Afficher la durée totale
-                int duration = mediaPlayer.getDuration();
-                total_duration.setText(formatTime(duration));
-
-                if (wasPlaying) {
-                    mediaPlayer.start(); // Reprendre la lecture si elle était en cours
-                    play.setImageResource(android.R.drawable.ic_media_pause); // Icône de pause
-                }
-            });
-            mediaPlayer.setOnCompletionListener(mp -> {
-                if (currentIndex < songList.size() - 1) {
-                    currentIndex++;
-                    loadSong(currentIndex);
-
-                    // Démarrer automatiquement la lecture après préparation
-                    mediaPlayer.setOnPreparedListener(mpPrepared -> {
-                        mediaPlayer.start();
-                        play.setImageResource(android.R.drawable.ic_media_pause); // Mettre à jour l'icône
-                    });
-                }
-            });
-            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                return true;
-            });
-            mediaPlayer.prepareAsync(); // Préparation asynchrone
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(this, "URL invalide, lecture impossible", Toast.LENGTH_SHORT).show();
-            play.setEnabled(false); // Désactiver le bouton play
-        }
-
-        updateSeekBar = new Runnable() {
-            @Override
-            public void run() {
-                if (mediaPlayer != null) {
-                    // Mettre à jour le temps actuel
-                    int currentPosition = mediaPlayer.getCurrentPosition();
-                    current_time.setText(formatTime(currentPosition));
-                    seekBar.setProgress(currentPosition);
-                    handler.postDelayed(this, 1000);
-                }
-            }
-        };
-        handler.post(updateSeekBar);
-
+        
         updateLikeIcon(song.title.trim().toLowerCase());
-        cover.setVisibility(View.VISIBLE);
-        lyricsScroll.setVisibility(View.GONE);
-        showingLyrics = false;
+    }
+
+    private void updatePlayPauseButton(boolean isPlaying) {
+        play.setImageResource(isPlaying ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play);
     }
 
     // Méthode utilitaire pour formater le temps en mm:ss
@@ -301,19 +273,17 @@ public class PlayerActivity extends AppCompatActivity {
 
     private void updateLikeIcon(String key) {
         boolean liked = prefs.getBoolean(key, false);
-        Log.d("PLAYER", "updateLikeIcon: " + key + " = " + liked);
+        Log.d(TAG, "updateLikeIcon: " + key + " = " + liked);
         likeButton.setImageResource(liked ? android.R.drawable.btn_star_big_on : android.R.drawable.btn_star);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (mediaPlayer != null) {
-            handler.removeCallbacks(updateSeekBar);
-            // Correction: Libérer le MediaPlayer pour éviter les problèmes de lecture
-            mediaPlayer.stop();
-            mediaPlayer.release();
-            mediaPlayer = null;
+        if (serviceBound) {
+            musicService.removeListener(this);
+            unbindService(serviceConnection);
+            serviceBound = false;
         }
     }
 
@@ -322,5 +292,26 @@ public class PlayerActivity extends AppCompatActivity {
         Intent intent = new Intent(context, PlayerActivity.class);
         intent.putExtra("SONG", song);
         context.startActivity(intent);
+    }
+
+    // Implémentation des callbacks du service
+    @Override
+    public void onPlaybackStateChanged(boolean isPlaying) {
+        runOnUiThread(() -> updatePlayPauseButton(isPlaying));
+    }
+
+    @Override
+    public void onSongChanged(Song song) {
+        runOnUiThread(() -> updateUI(song));
+    }
+
+    @Override
+    public void onProgressChanged(int position, int duration) {
+        runOnUiThread(() -> {
+            seekBar.setMax(duration);
+            seekBar.setProgress(position);
+            current_time.setText(formatTime(position));
+            total_duration.setText(formatTime(duration));
+        });
     }
 }
