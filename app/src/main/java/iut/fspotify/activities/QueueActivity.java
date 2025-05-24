@@ -21,7 +21,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import iut.fspotify.R;
 import iut.fspotify.adapter.QueueAdapter;
@@ -34,8 +36,10 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
     private QueueAdapter adapter;
     private List<Song> songList = new ArrayList<>();
     private List<Song> filteredList = new ArrayList<>();
+    private Map<Integer, Integer> filteredToOriginalIndexMap = new HashMap<>();
     private BottomNavigationView bottomNavigationView;
     private RecyclerView recyclerView;
+    private boolean isSearchActive = false;
     
     // Service de lecture musicale
     private MusicPlayerService musicService;
@@ -102,6 +106,11 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
                 int fromPosition = viewHolder.getAdapterPosition();
                 int toPosition = target.getAdapterPosition();
                 
+                // Ne pas permettre le drag & drop pendant la recherche
+                if (isSearchActive) {
+                    return false;
+                }
+                
                 // Mettre à jour l'adapter
                 adapter.moveItem(fromPosition, toPosition);
                 
@@ -122,6 +131,12 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
                 // Non utilisé
             }
+            
+            // Permettre le déplacement sur plusieurs positions
+            @Override
+            public boolean isLongPressDragEnabled() {
+                return true;
+            }
         };
         
         ItemTouchHelper touchHelper = new ItemTouchHelper(callback);
@@ -130,8 +145,22 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
         // Initialisation de l'adapter
         adapter = new QueueAdapter(filteredList, (song, position) -> {
             if (serviceBound) {
-                // Jouer la chanson sélectionnée
-                musicService.playQueueItem(position);
+                // Si la recherche est active, trouver l'index réel dans la queue
+                if (isSearchActive) {
+                    // Trouver la chanson dans la queue complète
+                    List<Song> fullQueue = musicService.getQueue();
+                    for (int i = 0; i < fullQueue.size(); i++) {
+                        if (fullQueue.get(i).getTitle().equals(song.getTitle()) && 
+                            fullQueue.get(i).getArtist().equals(song.getArtist())) {
+                            // Jouer la chanson à son index réel
+                            musicService.playQueueItem(i);
+                            break;
+                        }
+                    }
+                } else {
+                    // Jouer la chanson sélectionnée à sa position dans la liste
+                    musicService.playQueueItem(position);
+                }
                 
                 // Naviguer vers le player
                 Intent playerIntent = new Intent(this, PlayerActivity.class);
@@ -150,6 +179,7 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
 
             @Override
             public boolean onQueryTextChange(String newText) {
+                isSearchActive = !TextUtils.isEmpty(newText);
                 filterList(newText);
                 return true;
             }
@@ -182,13 +212,31 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
 
     private void filterList(String query) {
         filteredList.clear();
+        filteredToOriginalIndexMap.clear();
+        
         if (TextUtils.isEmpty(query)) {
-            filteredList.addAll(songList);
+            isSearchActive = false;
+            // Si la recherche est vide, afficher toute la queue
+            List<Song> serviceQueue = musicService.getQueue();
+            filteredList.addAll(serviceQueue);
+            
+            // Mettre à jour l'index du morceau en cours
+            adapter.setCurrentPlayingPosition(musicService.getCurrentQueueIndex());
         } else {
-            for (Song song : songList) {
+            isSearchActive = true;
+            // Filtrer la liste selon la requête
+            List<Song> serviceQueue = musicService.getQueue();
+            for (int i = 0; i < serviceQueue.size(); i++) {
+                Song song = serviceQueue.get(i);
                 if (song.getTitle().toLowerCase().contains(query.toLowerCase()) ||
                         song.getArtist().toLowerCase().contains(query.toLowerCase())) {
                     filteredList.add(song);
+                    filteredToOriginalIndexMap.put(filteredList.size() - 1, i);
+                    
+                    // Si c'est le morceau en cours, mettre à jour l'index dans la liste filtrée
+                    if (i == musicService.getCurrentQueueIndex()) {
+                        adapter.setCurrentPlayingPosition(filteredList.size() - 1);
+                    }
                 }
             }
         }
@@ -230,17 +278,20 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
     @Override
     public void onQueueChanged(List<Song> queue, int currentIndex) {
         runOnUiThread(() -> {
-            filteredList.clear();
-            filteredList.addAll(queue);
-            adapter.setCurrentPlayingPosition(currentIndex);
-            adapter.notifyDataSetChanged();
+            // Si la recherche est active, ne pas mettre à jour la liste filtrée
+            if (!isSearchActive) {
+                filteredList.clear();
+                filteredList.addAll(queue);
+                adapter.setCurrentPlayingPosition(currentIndex);
+                adapter.notifyDataSetChanged();
+            }
         });
     }
     
     @Override
     protected void onResume() {
         super.onResume();
-        if (serviceBound) {
+        if (serviceBound && !isSearchActive) {
             updateQueueFromService();
         }
     }

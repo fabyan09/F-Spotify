@@ -1,5 +1,6 @@
 package iut.fspotify.adapter;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -53,6 +54,7 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
         return new QueueViewHolder(view);
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public void onBindViewHolder(@NonNull QueueViewHolder holder, int position) {
         Song song = songList.get(position);
@@ -74,9 +76,9 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
 
         // Mise en évidence du morceau en cours de lecture
         if (position == currentPlayingPosition) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#E6F2FF")); // Bleu clair
+            holder.cardView.setCardBackgroundColor(Color.parseColor("#BB4CAF50")); // Vert clair
             holder.cardView.setStrokeWidth(4);
-            holder.cardView.setStrokeColor(Color.parseColor("#4285F4")); // Bleu Google
+            holder.cardView.setStrokeColor(Color.parseColor("#BB4CAF50")); // Vert comme l'app
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setStrokeWidth(0);
@@ -85,10 +87,11 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
         // Gestion du clic
         holder.itemView.setOnClickListener(v -> listener.onItemClick(song, position));
 
-        // Configuration du drag handle
+        // Configuration du drag handle pour permettre le déplacement sur plusieurs positions
         holder.dragHandle.setOnTouchListener((v, event) -> {
             if (event.getAction() == MotionEvent.ACTION_DOWN) {
                 touchHelper.startDrag(holder);
+                return true;
             }
             return false;
         });
@@ -105,10 +108,10 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
         currentPlayingPosition = position;
         
         // Mettre à jour uniquement les éléments concernés
-        if (oldPosition != -1) {
+        if (oldPosition != -1 && oldPosition < getItemCount()) {
             notifyItemChanged(oldPosition);
         }
-        if (currentPlayingPosition != -1) {
+        if (currentPlayingPosition != -1 && currentPlayingPosition < getItemCount()) {
             notifyItemChanged(currentPlayingPosition);
         }
     }
@@ -119,7 +122,17 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
     }
 
     // Méthode pour déplacer un élément dans la liste
+    // Améliorée pour supporter le déplacement sur plusieurs positions
     public void moveItem(int fromPosition, int toPosition) {
+        // Vérifier que les positions sont valides
+        if (fromPosition < 0 || fromPosition >= songList.size() || 
+            toPosition < 0 || toPosition >= songList.size()) {
+            return;
+        }
+        
+        // Sauvegarder l'élément à déplacer
+        Song movedSong = songList.get(fromPosition);
+        
         // Mettre à jour la position du morceau en cours si nécessaire
         if (fromPosition == currentPlayingPosition) {
             currentPlayingPosition = toPosition;
@@ -129,16 +142,13 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
             currentPlayingPosition++;
         }
 
-        // Déplacer l'élément dans la liste
-        if (fromPosition < toPosition) {
-            for (int i = fromPosition; i < toPosition; i++) {
-                Collections.swap(songList, i, i + 1);
-            }
-        } else {
-            for (int i = fromPosition; i > toPosition; i--) {
-                Collections.swap(songList, i, i - 1);
-            }
-        }
+        // Supprimer l'élément de sa position d'origine
+        songList.remove(fromPosition);
+        
+        // Insérer l'élément à sa nouvelle position
+        songList.add(toPosition, movedSong);
+        
+        // Notifier l'adapter du déplacement
         notifyItemMoved(fromPosition, toPosition);
     }
 
