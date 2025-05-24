@@ -7,7 +7,7 @@
     <item
         android:id="@+id/nav_queue"
         android:icon="@drawable/queue_music"
-        android:title="Titres" />
+        android:title="File d'attente" />
     <item
         android:id="@+id/nav_library"
         android:icon="@drawable/library_books"

@@ -10,10 +10,7 @@ import android.os.IBinder;
 import android.text.TextUtils;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
-import android.widget.ImageButton;
 import android.widget.SearchView;
-import android.widget.Toolbar;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -34,16 +31,16 @@ import iut.fspotify.model.Song;
 import iut.fspotify.services.MusicPlayerService;
 import iut.fspotify.utils.CSVParser;
 
-public class LibraryActivity extends AppCompatActivity {
+public class LibraryActivity extends AppCompatActivity implements MusicPlayerService.OnMusicPlayerListener {
 
     private List<Song> likedSongs = new ArrayList<>();
     private List<Song> filteredSongs = new ArrayList<>();
     private LikedSongAdapter adapter;
     private SharedPreferences.OnSharedPreferenceChangeListener preferenceChangeListener;
 
-    private Button likedSongsButton;
-    private Button artistsButton;
-    private Button albumsButton;
+    private androidx.appcompat.widget.AppCompatButton likedSongsButton;
+    private androidx.appcompat.widget.AppCompatButton artistsButton;
+    private androidx.appcompat.widget.AppCompatButton albumsButton;
     private SearchView searchView;
     private androidx.appcompat.widget.Toolbar artistToolbar;
     private BottomNavigationView bottomNavigationView;
@@ -59,6 +56,9 @@ public class LibraryActivity extends AppCompatActivity {
             MusicPlayerService.MusicBinder binder = (MusicPlayerService.MusicBinder) service;
             musicService = binder.getService();
             serviceBound = true;
+            
+            // Enregistrer cette activité comme listener
+            musicService.addListener(LibraryActivity.this);
         }
 
         @Override
@@ -145,10 +145,12 @@ public class LibraryActivity extends AppCompatActivity {
                 if (id == R.id.nav_player) {
                     Intent playerIntent = new Intent(LibraryActivity.this, PlayerActivity.class);
                     startActivity(playerIntent);
+                    overridePendingTransition(0, 0); // Désactive l'animation
                     return true;
                 } else if (id == R.id.nav_queue) {
                     Intent queueIntent = new Intent(LibraryActivity.this, QueueActivity.class);
                     startActivity(queueIntent);
+                    overridePendingTransition(0, 0); // Désactive l'animation
                     return true;
                 } else if (id == R.id.nav_library) {
                     // Déjà sur cette activité
@@ -191,19 +193,30 @@ public class LibraryActivity extends AppCompatActivity {
         // Configurer le clic pour jouer les titres likés
         adapter.setOnItemClickListener(song -> {
             if (serviceBound) {
-                // Charger la chanson dans le service
-                musicService.loadSong(song);
-                musicService.playPause(); // Démarrer la lecture
+                // Initialiser la queue avec toutes les chansons si elle est vide
+                if (musicService.getQueue().isEmpty()) {
+                    musicService.setQueue(allSongs);
+                }
+                
+                // Trouver l'index de la chanson dans la queue
+                List<Song> queue = musicService.getQueue();
+                for (int i = 0; i < queue.size(); i++) {
+                    if (queue.get(i).getTitle().equals(song.getTitle())) {
+                        musicService.playQueueItem(i);
+                        break;
+                    }
+                }
                 
                 // Naviguer vers le player
                 Intent playerIntent = new Intent(this, PlayerActivity.class);
                 startActivity(playerIntent);
+                overridePendingTransition(0, 0); // Désactive l'animation
             }
         });
     }
 
-    private void updateButtonStates(Button activeButton, Button... allButtons) {
-        for (Button button : allButtons) {
+    private void updateButtonStates(androidx.appcompat.widget.AppCompatButton activeButton, androidx.appcompat.widget.AppCompatButton... allButtons) {
+        for (androidx.appcompat.widget.AppCompatButton button : allButtons) {
             button.setBackgroundTintList(getColorStateList(R.color.button_selector));
         }
         activeButton.setBackgroundTintList(getColorStateList(R.color.button_selector_active));
@@ -215,13 +228,25 @@ public class LibraryActivity extends AppCompatActivity {
         // Configurer le clic pour jouer les titres likés
         adapter.setOnItemClickListener(song -> {
             if (serviceBound) {
-                // Charger la chanson dans le service
-                musicService.loadSong(song);
-                musicService.playPause(); // Démarrer la lecture
+                // Initialiser la queue avec toutes les chansons si elle est vide
+                List<Song> allSongs = CSVParser.parseCSV();
+                if (musicService.getQueue().isEmpty()) {
+                    musicService.setQueue(allSongs);
+                }
+                
+                // Trouver l'index de la chanson dans la queue
+                List<Song> queue = musicService.getQueue();
+                for (int i = 0; i < queue.size(); i++) {
+                    if (queue.get(i).getTitle().equals(song.getTitle())) {
+                        musicService.playQueueItem(i);
+                        break;
+                    }
+                }
                 
                 // Naviguer vers le player
                 Intent playerIntent = new Intent(this, PlayerActivity.class);
                 startActivity(playerIntent);
+                overridePendingTransition(0, 0); // Désactive l'animation
             }
         });
     }
@@ -283,13 +308,24 @@ public class LibraryActivity extends AppCompatActivity {
         // Configurer le clic pour jouer les chansons de l'artiste
         adapter.setOnItemClickListener(song -> {
             if (serviceBound) {
-                // Charger la chanson dans le service
-                musicService.loadSong(song);
-                musicService.playPause(); // Démarrer la lecture
+                // Initialiser la queue avec les chansons de l'artiste
+                if (musicService.getQueue().isEmpty()) {
+                    musicService.setQueue(allSongs);
+                }
+                
+                // Trouver l'index de la chanson dans la queue
+                List<Song> queue = musicService.getQueue();
+                for (int i = 0; i < queue.size(); i++) {
+                    if (queue.get(i).getTitle().equals(song.getTitle())) {
+                        musicService.playQueueItem(i);
+                        break;
+                    }
+                }
                 
                 // Naviguer vers le player
                 Intent playerIntent = new Intent(this, PlayerActivity.class);
                 startActivity(playerIntent);
+                overridePendingTransition(0, 0); // Désactive l'animation
             }
         });
     }
@@ -314,13 +350,24 @@ public class LibraryActivity extends AppCompatActivity {
         // Configurer le clic pour jouer les chansons de l'album
         adapter.setOnItemClickListener(song -> {
             if (serviceBound) {
-                // Charger la chanson dans le service
-                musicService.loadSong(song);
-                musicService.playPause(); // Démarrer la lecture
+                // Initialiser la queue avec toutes les chansons si elle est vide
+                if (musicService.getQueue().isEmpty()) {
+                    musicService.setQueue(allSongs);
+                }
+                
+                // Trouver l'index de la chanson dans la queue
+                List<Song> queue = musicService.getQueue();
+                for (int i = 0; i < queue.size(); i++) {
+                    if (queue.get(i).getTitle().equals(song.getTitle())) {
+                        musicService.playQueueItem(i);
+                        break;
+                    }
+                }
                 
                 // Naviguer vers le player
                 Intent playerIntent = new Intent(this, PlayerActivity.class);
                 startActivity(playerIntent);
+                overridePendingTransition(0, 0); // Désactive l'animation
             }
         });
     }
@@ -362,11 +409,33 @@ public class LibraryActivity extends AppCompatActivity {
         adapter.setOnItemClickListener(song -> showSongsByAlbum(song.getAlbum()));
     }
 
+    // Implémentation des callbacks du service
+    @Override
+    public void onPlaybackStateChanged(boolean isPlaying) {
+        // Non utilisé dans cette activité
+    }
+
+    @Override
+    public void onSongChanged(Song song) {
+        // Non utilisé dans cette activité
+    }
+
+    @Override
+    public void onProgressChanged(int position, int duration) {
+        // Non utilisé dans cette activité
+    }
+    
+    @Override
+    public void onQueueChanged(List<Song> queue, int currentIndex) {
+        // Non utilisé dans cette activité
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         
         if (serviceBound) {
+            musicService.removeListener(this);
             unbindService(serviceConnection);
             serviceBound = false;
         }

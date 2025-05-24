@@ -10,11 +10,11 @@ import android.os.IBinder;
 import android.text.TextUtils;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.SearchView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -29,12 +29,13 @@ import iut.fspotify.model.Song;
 import iut.fspotify.services.MusicPlayerService;
 import iut.fspotify.utils.CSVParser;
 
-public class QueueActivity extends AppCompatActivity {
+public class QueueActivity extends AppCompatActivity implements MusicPlayerService.OnMusicPlayerListener {
 
     private QueueAdapter adapter;
     private List<Song> songList = new ArrayList<>();
     private List<Song> filteredList = new ArrayList<>();
     private BottomNavigationView bottomNavigationView;
+    private RecyclerView recyclerView;
     
     // Service de lecture musicale
     private MusicPlayerService musicService;
@@ -47,6 +48,17 @@ public class QueueActivity extends AppCompatActivity {
             MusicPlayerService.MusicBinder binder = (MusicPlayerService.MusicBinder) service;
             musicService = binder.getService();
             serviceBound = true;
+            
+            // Enregistrer cette activité comme listener
+            musicService.addListener(QueueActivity.this);
+            
+            // Initialiser la queue si elle est vide
+            if (musicService.getQueue().isEmpty()) {
+                musicService.setQueue(songList);
+            } else {
+                // Sinon, utiliser la queue existante
+                updateQueueFromService();
+            }
         }
 
         @Override
@@ -60,7 +72,7 @@ public class QueueActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_queue);
 
-        RecyclerView recyclerView = findViewById(R.id.queue_recycler_view);
+        recyclerView = findViewById(R.id.queue_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         // Initialisation du menu de navigation
@@ -73,20 +85,60 @@ public class QueueActivity extends AppCompatActivity {
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
         overridePendingTransition(0, 0); // Désactive l'animation
 
-        songList = CSVParser.parseCSV(); // Charger les titres depuis le CSV
-        filteredList.addAll(songList); // Initialiser la liste filtrée
-        adapter = new QueueAdapter(filteredList, song -> {
+        // Charger les titres depuis le CSV si nécessaire
+        if (songList.isEmpty()) {
+            songList = CSVParser.parseCSV();
+            filteredList.addAll(songList);
+        }
+
+        // Configuration du ItemTouchHelper pour le drag & drop
+        ItemTouchHelper.Callback callback = new ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+            
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, 
+                                 @NonNull RecyclerView.ViewHolder viewHolder, 
+                                 @NonNull RecyclerView.ViewHolder target) {
+                int fromPosition = viewHolder.getAdapterPosition();
+                int toPosition = target.getAdapterPosition();
+                
+                // Mettre à jour l'adapter
+                adapter.moveItem(fromPosition, toPosition);
+                
+                // Mettre à jour la queue dans le service
+                if (serviceBound) {
+                    musicService.setQueue(adapter.getSongList());
+                    
+                    // Si le morceau en cours a été déplacé, mettre à jour l'index
+                    if (adapter.getCurrentPlayingPosition() == toPosition) {
+                        musicService.playQueueItem(toPosition);
+                    }
+                }
+                
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                // Non utilisé
+            }
+        };
+        
+        ItemTouchHelper touchHelper = new ItemTouchHelper(callback);
+        touchHelper.attachToRecyclerView(recyclerView);
+
+        // Initialisation de l'adapter
+        adapter = new QueueAdapter(filteredList, (song, position) -> {
             if (serviceBound) {
-                // Charger la chanson dans le service
-                musicService.loadSong(song);
-                musicService.playPause(); // Démarrer la lecture
+                // Jouer la chanson sélectionnée
+                musicService.playQueueItem(position);
                 
                 // Naviguer vers le player
                 Intent playerIntent = new Intent(this, PlayerActivity.class);
                 startActivity(playerIntent);
                 overridePendingTransition(0, 0); // Désactive l'animation
             }
-        });
+        }, touchHelper);
         recyclerView.setAdapter(adapter);
 
         SearchView searchView = findViewById(R.id.search_view);
@@ -143,10 +195,61 @@ public class QueueActivity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
     }
     
+    private void updateQueueFromService() {
+        if (serviceBound) {
+            // Récupérer la queue actuelle du service
+            List<Song> serviceQueue = musicService.getQueue();
+            int currentIndex = musicService.getCurrentQueueIndex();
+            
+            // Mettre à jour la liste locale
+            filteredList.clear();
+            filteredList.addAll(serviceQueue);
+            
+            // Mettre à jour l'adapter
+            adapter.setCurrentPlayingPosition(currentIndex);
+            adapter.notifyDataSetChanged();
+        }
+    }
+    
+    // Implémentation des callbacks du service
+    @Override
+    public void onPlaybackStateChanged(boolean isPlaying) {
+        // Non utilisé dans cette activité
+    }
+
+    @Override
+    public void onSongChanged(Song song) {
+        // Non utilisé dans cette activité
+    }
+
+    @Override
+    public void onProgressChanged(int position, int duration) {
+        // Non utilisé dans cette activité
+    }
+    
+    @Override
+    public void onQueueChanged(List<Song> queue, int currentIndex) {
+        runOnUiThread(() -> {
+            filteredList.clear();
+            filteredList.addAll(queue);
+            adapter.setCurrentPlayingPosition(currentIndex);
+            adapter.notifyDataSetChanged();
+        });
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (serviceBound) {
+            updateQueueFromService();
+        }
+    }
+    
     @Override
     protected void onDestroy() {
         super.onDestroy();
         if (serviceBound) {
+            musicService.removeListener(this);
             unbindService(serviceConnection);
             serviceBound = false;
         }

@@ -1,92 +1,22 @@
 package iut.fspotify;
 
+import android.content.Intent;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-import androidx.fragment.app.FragmentTransaction;
 
-import com.google.android.material.bottomnavigation.BottomNavigationView;
-
-import iut.fspotify.fragments.*;
+import iut.fspotify.activities.PlayerActivity;
 
 public class MainActivity extends AppCompatActivity {
-
-    private PlayerFragment playerFragment = new PlayerFragment();
-    private QueueFragment queueFragment = new QueueFragment();
-    private LibraryFragment libraryFragment = new LibraryFragment();
-    private Fragment activeFragment = playerFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
-        bottomNav.setOnItemSelectedListener(item -> {
-            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-
-            int itemId = item.getItemId();
-
-            if (itemId == R.id.nav_player) {
-                transaction.hide(activeFragment).show(playerFragment);
-                activeFragment = playerFragment;
-            } else if (itemId == R.id.nav_queue) {
-                transaction.hide(activeFragment).show(queueFragment);
-                activeFragment = queueFragment;
-            } else if (itemId == R.id.nav_library) {
-                transaction.hide(activeFragment).show(libraryFragment);
-                activeFragment = libraryFragment;
-            }
-
-            transaction.commit();
-            return true;
-        });
-
-        // Ajouter tous les fragments une seule fois
-        getSupportFragmentManager().beginTransaction()
-                .add(R.id.fragment_container, libraryFragment, "LIBRARY").hide(libraryFragment)
-                .add(R.id.fragment_container, queueFragment, "QUEUE").hide(queueFragment)
-                .add(R.id.fragment_container, playerFragment, "PLAYER")
-                .commit();
-
-        bottomNav.setOnItemSelectedListener(item -> {
-            FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-
-            int itemId = item.getItemId();
-
-            if (itemId == R.id.nav_player) {
-                transaction.hide(activeFragment).show(playerFragment);
-                activeFragment = playerFragment;
-            } else if (itemId == R.id.nav_queue) {
-                transaction.hide(activeFragment).show(queueFragment);
-                activeFragment = queueFragment;
-            } else if (itemId == R.id.nav_library) {
-                transaction.hide(activeFragment).show(libraryFragment);
-                activeFragment = libraryFragment;
-            }
-
-
-            transaction.commit();
-            return true;
-        });
-
-        // Sélectionner le fragment par défaut
-        bottomNav.setSelectedItemId(R.id.nav_player);
+        
+        // Rediriger directement vers PlayerActivity
+        Intent intent = new Intent(this, PlayerActivity.class);
+        startActivity(intent);
+        
+        // Terminer MainActivity pour qu'elle ne reste pas dans la pile d'activités
+        finish();
     }
-
-    public PlayerFragment getPlayerFragment() {
-        return playerFragment;
-    }
-
-    public void showPlayerFragment() {
-        getSupportFragmentManager().beginTransaction()
-                .hide(activeFragment)
-                .show(playerFragment)
-                .commit();
-        activeFragment = playerFragment;
-
-        BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
-        bottomNav.setSelectedItemId(R.id.nav_player);
-    }
-
 }

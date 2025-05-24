@@ -28,6 +28,10 @@ public class MusicPlayerService extends Service {
     // État de lecture
     private boolean isPlaying = false;
     
+    // File d'attente de lecture
+    private List<Song> queue = new ArrayList<>();
+    private int currentQueueIndex = -1;
+    
     // Binder pour les clients
     private final IBinder binder = new MusicBinder();
     
@@ -38,11 +42,15 @@ public class MusicPlayerService extends Service {
     private Thread progressThread;
     private boolean isProgressThreadRunning = false;
     
+    // Verrou pour éviter les appels multiples
+    private boolean isLoadingSong = false;
+    
     // Interface pour les callbacks
     public interface OnMusicPlayerListener {
         void onPlaybackStateChanged(boolean isPlaying);
         void onSongChanged(Song song);
         void onProgressChanged(int position, int duration);
+        void onQueueChanged(List<Song> queue, int currentIndex);
     }
     
     public class MusicBinder extends Binder {
@@ -65,15 +73,22 @@ public class MusicPlayerService extends Service {
             }
             notifyPlaybackStateChanged();
             startProgressUpdates();
+            isLoadingSong = false; // Libérer le verrou une fois la chanson chargée
         });
         
         mediaPlayer.setOnCompletionListener(mp -> {
-            isPlaying = false;
-            notifyPlaybackStateChanged();
+            // Passer à la chanson suivante dans la queue
+            if (currentQueueIndex < queue.size() - 1) {
+                playNextInQueue();
+            } else {
+                isPlaying = false;
+                notifyPlaybackStateChanged();
+            }
         });
         
         mediaPlayer.setOnErrorListener((mp, what, extra) -> {
             Log.e(TAG, "Erreur MediaPlayer: " + what + ", " + extra);
+            isLoadingSong = false; // Libérer le verrou en cas d'erreur
             return false;
         });
     }
@@ -102,7 +117,9 @@ public class MusicPlayerService extends Service {
     
     // Méthode pour charger une chanson
     public void loadSong(Song song) {
-        if (song == null) return;
+        if (song == null || isLoadingSong) return; // Éviter les appels multiples
+        
+        isLoadingSong = true; // Activer le verrou
         
         try {
             // Sauvegarder l'état actuel
@@ -127,6 +144,7 @@ public class MusicPlayerService extends Service {
             
         } catch (IOException e) {
             Log.e(TAG, "Erreur lors du chargement de la chanson", e);
+            isLoadingSong = false; // Libérer le verrou en cas d'erreur
         }
     }
     
@@ -198,6 +216,51 @@ public class MusicPlayerService extends Service {
         return isPlaying;
     }
     
+    // Méthodes pour la gestion de la file d'attente
+    public void setQueue(List<Song> newQueue) {
+        queue.clear();
+        if (newQueue != null) {
+            queue.addAll(newQueue);
+        }
+        notifyQueueChanged();
+    }
+    
+    public List<Song> getQueue() {
+        return new ArrayList<>(queue);
+    }
+    
+    public int getCurrentQueueIndex() {
+        return currentQueueIndex;
+    }
+    
+    public void playQueueItem(int index) {
+        if (index >= 0 && index < queue.size() && !isLoadingSong) {
+            currentQueueIndex = index;
+            loadSong(queue.get(index));
+            isPlaying = true; // Définir l'état de lecture à true
+            // Ne pas appeler playPause() ici pour éviter les appels multiples
+            notifyQueueChanged();
+        }
+    }
+    
+    public void playNextInQueue() {
+        if (currentQueueIndex < queue.size() - 1 && !isLoadingSong) {
+            currentQueueIndex++;
+            loadSong(queue.get(currentQueueIndex));
+            isPlaying = true; // Définir l'état de lecture à true
+            notifyQueueChanged();
+        }
+    }
+    
+    public void playPreviousInQueue() {
+        if (currentQueueIndex > 0 && !isLoadingSong) {
+            currentQueueIndex--;
+            loadSong(queue.get(currentQueueIndex));
+            isPlaying = true; // Définir l'état de lecture à true
+            notifyQueueChanged();
+        }
+    }
+    
     // Méthode pour ajouter un listener
     public void addListener(OnMusicPlayerListener listener) {
         if (!listeners.contains(listener)) {
@@ -211,6 +274,7 @@ public class MusicPlayerService extends Service {
                     listener.onProgressChanged(mediaPlayer.getCurrentPosition(), mediaPlayer.getDuration());
                 }
             }
+            listener.onQueueChanged(queue, currentQueueIndex);
         }
     }
     
@@ -239,6 +303,13 @@ public class MusicPlayerService extends Service {
             for (OnMusicPlayerListener listener : listeners) {
                 listener.onProgressChanged(mediaPlayer.getCurrentPosition(), mediaPlayer.getDuration());
             }
+        }
+    }
+    
+    // Méthode pour notifier les changements de file d'attente
+    private void notifyQueueChanged() {
+        for (OnMusicPlayerListener listener : listeners) {
+            listener.onQueueChanged(queue, currentQueueIndex);
         }
     }
     

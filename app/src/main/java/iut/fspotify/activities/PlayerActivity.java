@@ -43,10 +43,6 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
     private MusicPlayerService musicService;
     private boolean serviceBound = false;
     
-    // Liste des chansons
-    private static List<Song> songList;
-    private static int currentIndex = 0;
-    
     // UI
     private boolean showingLyrics = false;
     private SharedPreferences prefs;
@@ -80,18 +76,27 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
                 // Charger la chanson depuis l'intent
                 Song song = (Song) getIntent().getSerializableExtra("SONG");
                 if (song != null) {
-                    songList = List.of(song);
-                    currentIndex = 0;
-                    musicService.loadSong(song);
+                    // Initialiser la queue avec cette chanson si elle est vide
+                    if (musicService.getQueue().isEmpty()) {
+                        List<Song> allSongs = CSVParser.parseCSV();
+                        musicService.setQueue(allSongs);
+                    }
+                    
+                    // Trouver l'index de la chanson dans la queue
+                    List<Song> queue = musicService.getQueue();
+                    for (int i = 0; i < queue.size(); i++) {
+                        if (queue.get(i).getTitle().equals(song.getTitle())) {
+                            musicService.playQueueItem(i);
+                            break;
+                        }
+                    }
                 }
-            } else if (songList != null && !songList.isEmpty()) {
-                // Utiliser la liste existante
-                musicService.loadSong(songList.get(currentIndex));
-            } else {
-                // Charger la liste complète
-                songList = CSVParser.parseCSV();
-                if (!songList.isEmpty()) {
-                    musicService.loadSong(songList.get(currentIndex));
+            } else if (musicService.getQueue().isEmpty()) {
+                // Initialiser la queue avec toutes les chansons
+                List<Song> allSongs = CSVParser.parseCSV();
+                musicService.setQueue(allSongs);
+                if (!allSongs.isEmpty()) {
+                    musicService.playQueueItem(0);
                 }
             }
         }
@@ -156,20 +161,14 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
         });
 
         next.setOnClickListener(v -> {
-            if (currentIndex < songList.size() - 1) {
-                currentIndex++;
-                if (serviceBound) {
-                    musicService.loadSong(songList.get(currentIndex));
-                }
+            if (serviceBound) {
+                musicService.playNextInQueue();
             }
         });
 
         prev.setOnClickListener(v -> {
-            if (currentIndex > 0) {
-                currentIndex--;
-                if (serviceBound) {
-                    musicService.loadSong(songList.get(currentIndex));
-                }
+            if (serviceBound) {
+                musicService.playPreviousInQueue();
             }
         });
 
@@ -228,10 +227,12 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
                 } else if (id == R.id.nav_queue) {
                     Intent queueIntent = new Intent(PlayerActivity.this, QueueActivity.class);
                     startActivity(queueIntent);
+                    overridePendingTransition(0, 0); // Désactive l'animation
                     return true;
                 } else if (id == R.id.nav_library) {
                     Intent libraryIntent = new Intent(PlayerActivity.this, LibraryActivity.class);
                     startActivity(libraryIntent);
+                    overridePendingTransition(0, 0); // Désactive l'animation
                     return true;
                 }
                 return false;
@@ -275,6 +276,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
     private void updateLikeIcon(String key) {
         boolean liked = prefs.getBoolean(key, false);
         Log.d(TAG, "updateLikeIcon: " + key + " = " + liked);
+        // Utiliser les icônes personnalisées au lieu des icônes Android par défaut
         likeButton.setImageResource(liked ? R.drawable.like : R.drawable.empty_like);
     }
 
@@ -293,7 +295,6 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
         Intent intent = new Intent(context, PlayerActivity.class);
         intent.putExtra("SONG", song);
         context.startActivity(intent);
-
     }
 
     // Implémentation des callbacks du service
@@ -315,5 +316,10 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
             current_time.setText(formatTime(position));
             total_duration.setText(formatTime(duration));
         });
+    }
+    
+    @Override
+    public void onQueueChanged(List<Song> queue, int currentIndex) {
+        // Non utilisé dans cette activité
     }
 }
