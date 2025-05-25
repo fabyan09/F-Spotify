@@ -4,20 +4,17 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Color;
-import android.os.StrictMode;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
-
-import com.google.android.material.card.MaterialCardView;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -62,10 +59,8 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
         holder.artistTextView.setText(song.getArtist());
 
         // Chargement de l'image
-        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
-        StrictMode.setThreadPolicy(policy);
         try {
-            URL url = new URL("http://edu.info06.net/lyrics/images/" + song.getCover( ));
+            URL url = new URL("http://edu.info06.net/lyrics/images/" + song.getCover());
             InputStream input = url.openStream();
             Bitmap bitmap = BitmapFactory.decodeStream(input);
             holder.coverImageView.setImageBitmap(bitmap);
@@ -74,23 +69,18 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
             holder.coverImageView.setImageResource(R.drawable.placeholder);
         }
 
-        // Utiliser une comparaison plus stricte basée sur une combinaison unique de propriétés
+        // Utiliser une comparaison stricte basée sur une combinaison unique de propriétés
         boolean isCurrentSong = currentPlayingSong != null &&
                 song.getTitle().equals(currentPlayingSong.getTitle()) &&
                 song.getArtist().equals(currentPlayingSong.getArtist()) &&
                 song.getMp3().equals(currentPlayingSong.getMp3());
 
-        if (isCurrentSong) {
-            holder.cardView.setCardBackgroundColor(Color.parseColor("#BB4CAF50")); // Vert clair
-            holder.cardView.setStrokeWidth(4);
-            holder.cardView.setStrokeColor(Color.parseColor("#BB4CAF50")); // Vert comme l'app
-            // Mettre à jour la position actuelle si nécessaire
-            if (currentPlayingPosition != position) {
-                currentPlayingPosition = position;
-            }
-        } else {
-            holder.cardView.setCardBackgroundColor(Color.WHITE);
-            holder.cardView.setStrokeWidth(0);
+        // Appliquer la sélection visuelle via l'état selected du conteneur
+        holder.containerView.setSelected(isCurrentSong);
+
+        // Mettre à jour la position actuelle si nécessaire
+        if (isCurrentSong && currentPlayingPosition != position) {
+            currentPlayingPosition = position;
         }
 
         // Gestion du clic
@@ -139,10 +129,14 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
     }
 
     // Méthode pour déplacer un élément dans la liste
-    // Ne gère plus l'indicateur de position courante
     public void moveItem(int fromPosition, int toPosition) {
         if (fromPosition < 0 || fromPosition >= songList.size() ||
                 toPosition < 0 || toPosition >= songList.size()) {
+            return;
+        }
+
+        // Si les positions sont identiques, ne rien faire
+        if (fromPosition == toPosition) {
             return;
         }
 
@@ -156,11 +150,23 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
         // Notifier l'adaptateur du déplacement
         notifyItemMoved(fromPosition, toPosition);
 
+        // Pour les déplacements sur plusieurs positions
+        if (Math.abs(fromPosition - toPosition) > 1) {
+            int start = Math.min(fromPosition, toPosition);
+            int end = Math.max(fromPosition, toPosition);
+            notifyItemRangeChanged(start, end - start + 1);
+        }
+
         // Mettre à jour la position de la chanson en cours si nécessaire
         if (playingSong != null) {
-            int newPlayingPosition = songList.indexOf(playingSong);
-            if (newPlayingPosition != -1) {
-                setCurrentPlayingPosition(newPlayingPosition);
+            for (int i = 0; i < songList.size(); i++) {
+                Song song = songList.get(i);
+                if (song.getTitle().equals(playingSong.getTitle()) &&
+                    song.getArtist().equals(playingSong.getArtist()) &&
+                    song.getMp3().equals(playingSong.getMp3())) {
+                    currentPlayingPosition = i;
+                    break;
+                }
             }
         }
     }
@@ -175,7 +181,7 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
         TextView artistTextView;
         ImageView coverImageView;
         ImageView dragHandle;
-        MaterialCardView cardView;
+        LinearLayout containerView;
 
         public QueueViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -183,7 +189,7 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
             artistTextView = itemView.findViewById(R.id.item_artist);
             coverImageView = itemView.findViewById(R.id.item_cover);
             dragHandle = itemView.findViewById(R.id.drag_handle);
-            cardView = (MaterialCardView) itemView;
+            containerView = (LinearLayout) itemView.findViewById(R.id.song_container);
         }
     }
 }

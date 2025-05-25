@@ -111,10 +111,14 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
                     return false;
                 }
 
-                // Récupérer l'index actuel avant la mise à jour
-                int currentIndex = musicService.getCurrentQueueIndex();
+                // Sauvegarder la chanson en cours AVANT tout déplacement
+                Song currentSong = null;
+                if (serviceBound && musicService.getCurrentQueueIndex() >= 0 && 
+                    musicService.getCurrentQueueIndex() < musicService.getQueue().size()) {
+                    currentSong = musicService.getQueue().get(musicService.getCurrentQueueIndex());
+                }
 
-                // Mettre à jour l'adapter (sans modifier currentPlayingPosition)
+                // Mettre à jour l'adapter
                 adapter.moveItem(fromPosition, toPosition);
 
                 // Mettre à jour la queue dans le service
@@ -122,21 +126,24 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
                     // Mettre à jour la queue dans le service
                     musicService.setQueue(adapter.getSongList());
 
-                    // Si le morceau en cours a été déplacé, mettre à jour l'index sans relancer la lecture
-                    if (fromPosition == currentIndex) {
-                        musicService.setCurrentQueueIndexSilently(toPosition);
+                    // Retrouver la position de la chanson en cours après le déplacement
+                    if (currentSong != null) {
+                        List<Song> newQueue = adapter.getSongList();
+                        for (int i = 0; i < newQueue.size(); i++) {
+                            Song song = newQueue.get(i);
+                            if (isSameSong(song, currentSong)) {
+                                // Mettre à jour l'index silencieusement
+                                musicService.setCurrentQueueIndexSilently(i);
+                                // Forcer la mise à jour visuelle
+                                adapter.setCurrentPlayingPosition(i);
+                                break;
+                            }
+                        }
                     }
-
-                    // CRUCIAL: Forcer la mise à jour de l'indicateur visuel avec l'index du service
-                    // Cette étape doit être exécutée APRÈS toutes les autres opérations
-                    adapter.setCurrentPlayingPosition(musicService.getCurrentQueueIndex());
-                    adapter.notifyDataSetChanged(); // Rafraîchir toute la liste pour s'assurer que tout est à jour
                 }
 
                 return true;
             }
-
-
 
             @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
@@ -161,8 +168,7 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
                     // Trouver la chanson dans la queue complète
                     List<Song> fullQueue = musicService.getQueue();
                     for (int i = 0; i < fullQueue.size(); i++) {
-                        if (fullQueue.get(i).getTitle().equals(song.getTitle()) &&
-                                fullQueue.get(i).getArtist().equals(song.getArtist())) {
+                        if (isSameSong(fullQueue.get(i), song)) {
                             // Jouer la chanson à son index réel
                             musicService.playQueueItem(i);
                             break;
@@ -219,6 +225,14 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
                 return false;
             }
         });
+    }
+
+    // Méthode utilitaire pour comparer deux chansons par leur identité
+    private boolean isSameSong(Song song1, Song song2) {
+        return song1 != null && song2 != null &&
+               song1.getTitle().equals(song2.getTitle()) &&
+               song1.getArtist().equals(song2.getArtist()) &&
+               song1.getMp3().equals(song2.getMp3());
     }
 
     private void filterList(String query) {
