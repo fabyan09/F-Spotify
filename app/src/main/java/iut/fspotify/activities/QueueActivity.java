@@ -40,11 +40,11 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
     private BottomNavigationView bottomNavigationView;
     private RecyclerView recyclerView;
     private boolean isSearchActive = false;
-    
+
     // Service de lecture musicale
     private MusicPlayerService musicService;
     private boolean serviceBound = false;
-    
+
     // Connexion au service
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -52,10 +52,10 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
             MusicPlayerService.MusicBinder binder = (MusicPlayerService.MusicBinder) service;
             musicService = binder.getService();
             serviceBound = true;
-            
+
             // Enregistrer cette activité comme listener
             musicService.addListener(QueueActivity.this);
-            
+
             // Initialiser la queue si elle est vide
             if (musicService.getQueue().isEmpty()) {
                 musicService.setQueue(songList);
@@ -98,47 +98,58 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
         // Configuration du ItemTouchHelper pour le drag & drop
         ItemTouchHelper.Callback callback = new ItemTouchHelper.SimpleCallback(
                 ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
-            
+
             @Override
-            public boolean onMove(@NonNull RecyclerView recyclerView, 
-                                 @NonNull RecyclerView.ViewHolder viewHolder, 
-                                 @NonNull RecyclerView.ViewHolder target) {
+            public boolean onMove(@NonNull RecyclerView recyclerView,
+                                  @NonNull RecyclerView.ViewHolder viewHolder,
+                                  @NonNull RecyclerView.ViewHolder target) {
                 int fromPosition = viewHolder.getAdapterPosition();
                 int toPosition = target.getAdapterPosition();
-                
+
                 // Ne pas permettre le drag & drop pendant la recherche
                 if (isSearchActive) {
                     return false;
                 }
-                
-                // Mettre à jour l'adapter
+
+                // Récupérer l'index actuel avant la mise à jour
+                int currentIndex = musicService.getCurrentQueueIndex();
+
+                // Mettre à jour l'adapter (sans modifier currentPlayingPosition)
                 adapter.moveItem(fromPosition, toPosition);
-                
+
                 // Mettre à jour la queue dans le service
                 if (serviceBound) {
+                    // Mettre à jour la queue dans le service
                     musicService.setQueue(adapter.getSongList());
-                    
-                    // Si le morceau en cours a été déplacé, mettre à jour l'index
-                    if (adapter.getCurrentPlayingPosition() == toPosition) {
-                        musicService.playQueueItem(toPosition);
+
+                    // Si le morceau en cours a été déplacé, mettre à jour l'index sans relancer la lecture
+                    if (fromPosition == currentIndex) {
+                        musicService.setCurrentQueueIndexSilently(toPosition);
                     }
+
+                    // CRUCIAL: Forcer la mise à jour de l'indicateur visuel avec l'index du service
+                    // Cette étape doit être exécutée APRÈS toutes les autres opérations
+                    adapter.setCurrentPlayingPosition(musicService.getCurrentQueueIndex());
+                    adapter.notifyDataSetChanged(); // Rafraîchir toute la liste pour s'assurer que tout est à jour
                 }
-                
+
                 return true;
             }
+
+
 
             @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
                 // Non utilisé
             }
-            
+
             // Permettre le déplacement sur plusieurs positions
             @Override
             public boolean isLongPressDragEnabled() {
                 return true;
             }
         };
-        
+
         ItemTouchHelper touchHelper = new ItemTouchHelper(callback);
         touchHelper.attachToRecyclerView(recyclerView);
 
@@ -150,8 +161,8 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
                     // Trouver la chanson dans la queue complète
                     List<Song> fullQueue = musicService.getQueue();
                     for (int i = 0; i < fullQueue.size(); i++) {
-                        if (fullQueue.get(i).getTitle().equals(song.getTitle()) && 
-                            fullQueue.get(i).getArtist().equals(song.getArtist())) {
+                        if (fullQueue.get(i).getTitle().equals(song.getTitle()) &&
+                                fullQueue.get(i).getArtist().equals(song.getArtist())) {
                             // Jouer la chanson à son index réel
                             musicService.playQueueItem(i);
                             break;
@@ -161,7 +172,7 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
                     // Jouer la chanson sélectionnée à sa position dans la liste
                     musicService.playQueueItem(position);
                 }
-                
+
                 // Naviguer vers le player
                 Intent playerIntent = new Intent(this, PlayerActivity.class);
                 startActivity(playerIntent);
@@ -190,7 +201,7 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 int id = item.getItemId();
-                
+
                 if (id == R.id.nav_player) {
                     Intent playerIntent = new Intent(QueueActivity.this, PlayerActivity.class);
                     startActivity(playerIntent);
@@ -213,13 +224,13 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
     private void filterList(String query) {
         filteredList.clear();
         filteredToOriginalIndexMap.clear();
-        
+
         if (TextUtils.isEmpty(query)) {
             isSearchActive = false;
             // Si la recherche est vide, afficher toute la queue
             List<Song> serviceQueue = musicService.getQueue();
             filteredList.addAll(serviceQueue);
-            
+
             // Mettre à jour l'index du morceau en cours
             adapter.setCurrentPlayingPosition(musicService.getCurrentQueueIndex());
         } else {
@@ -232,7 +243,7 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
                         song.getArtist().toLowerCase().contains(query.toLowerCase())) {
                     filteredList.add(song);
                     filteredToOriginalIndexMap.put(filteredList.size() - 1, i);
-                    
+
                     // Si c'est le morceau en cours, mettre à jour l'index dans la liste filtrée
                     if (i == musicService.getCurrentQueueIndex()) {
                         adapter.setCurrentPlayingPosition(filteredList.size() - 1);
@@ -242,23 +253,23 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
         }
         adapter.notifyDataSetChanged();
     }
-    
+
     private void updateQueueFromService() {
         if (serviceBound) {
             // Récupérer la queue actuelle du service
             List<Song> serviceQueue = musicService.getQueue();
             int currentIndex = musicService.getCurrentQueueIndex();
-            
+
             // Mettre à jour la liste locale
             filteredList.clear();
             filteredList.addAll(serviceQueue);
-            
+
             // Mettre à jour l'adapter
             adapter.setCurrentPlayingPosition(currentIndex);
             adapter.notifyDataSetChanged();
         }
     }
-    
+
     // Implémentation des callbacks du service
     @Override
     public void onPlaybackStateChanged(boolean isPlaying) {
@@ -274,7 +285,7 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
     public void onProgressChanged(int position, int duration) {
         // Non utilisé dans cette activité
     }
-    
+
     @Override
     public void onQueueChanged(List<Song> queue, int currentIndex) {
         runOnUiThread(() -> {
@@ -287,7 +298,7 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
             }
         });
     }
-    
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -295,7 +306,7 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
             updateQueueFromService();
         }
     }
-    
+
     @Override
     protected void onDestroy() {
         super.onDestroy();

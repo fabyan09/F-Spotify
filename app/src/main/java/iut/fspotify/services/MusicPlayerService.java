@@ -233,6 +233,14 @@ public class MusicPlayerService extends Service {
         return currentQueueIndex;
     }
     
+    // Méthode pour mettre à jour l'index de la queue sans déclencher de lecture
+    public void setCurrentQueueIndexSilently(int index) {
+        if (index >= 0 && index < queue.size()) {
+            currentQueueIndex = index;
+            notifyQueueChanged();
+        }
+    }
+    
     public void playQueueItem(int index) {
         if (index >= 0 && index < queue.size() && !isLoadingSong) {
             currentQueueIndex = index;

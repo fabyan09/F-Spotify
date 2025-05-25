@@ -22,7 +22,6 @@ import com.google.android.material.card.MaterialCardView;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.util.Collections;
 import java.util.List;
 
 import iut.fspotify.R;
@@ -34,6 +33,7 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
     private final OnItemClickListener listener;
     private final ItemTouchHelper touchHelper;
     private int currentPlayingPosition = -1;
+    private Song currentPlayingSong = null; // Référence à la chanson en cours
     private Context context;
 
     public interface OnItemClickListener {
@@ -65,7 +65,7 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
         try {
-            URL url = new URL("http://edu.info06.net/lyrics/images/" + song.getCover());
+            URL url = new URL("http://edu.info06.net/lyrics/images/" + song.getCover( ));
             InputStream input = url.openStream();
             Bitmap bitmap = BitmapFactory.decodeStream(input);
             holder.coverImageView.setImageBitmap(bitmap);
@@ -74,11 +74,20 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
             holder.coverImageView.setImageResource(R.drawable.placeholder);
         }
 
-        // Mise en évidence du morceau en cours de lecture
-        if (position == currentPlayingPosition) {
+        // Utiliser une comparaison plus stricte basée sur une combinaison unique de propriétés
+        boolean isCurrentSong = currentPlayingSong != null &&
+                song.getTitle().equals(currentPlayingSong.getTitle()) &&
+                song.getArtist().equals(currentPlayingSong.getArtist()) &&
+                song.getMp3().equals(currentPlayingSong.getMp3());
+
+        if (isCurrentSong) {
             holder.cardView.setCardBackgroundColor(Color.parseColor("#BB4CAF50")); // Vert clair
             holder.cardView.setStrokeWidth(4);
             holder.cardView.setStrokeColor(Color.parseColor("#BB4CAF50")); // Vert comme l'app
+            // Mettre à jour la position actuelle si nécessaire
+            if (currentPlayingPosition != position) {
+                currentPlayingPosition = position;
+            }
         } else {
             holder.cardView.setCardBackgroundColor(Color.WHITE);
             holder.cardView.setStrokeWidth(0);
@@ -104,15 +113,23 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
 
     // Méthode pour mettre à jour la position du morceau en cours de lecture
     public void setCurrentPlayingPosition(int position) {
-        int oldPosition = currentPlayingPosition;
-        currentPlayingPosition = position;
-        
-        // Mettre à jour uniquement les éléments concernés
-        if (oldPosition != -1 && oldPosition < getItemCount()) {
-            notifyItemChanged(oldPosition);
-        }
-        if (currentPlayingPosition != -1 && currentPlayingPosition < getItemCount()) {
+        // Stocker la référence à la chanson elle-même
+        if (position >= 0 && position < songList.size()) {
+            // Sauvegarder l'ancienne position pour la mise à jour
+            int oldPosition = currentPlayingPosition;
+
+            // Mettre à jour la position et la référence à la chanson
+            currentPlayingPosition = position;
+            currentPlayingSong = songList.get(position);
+
+            // Mettre à jour uniquement les éléments concernés
+            if (oldPosition != -1 && oldPosition < getItemCount()) {
+                notifyItemChanged(oldPosition);
+            }
             notifyItemChanged(currentPlayingPosition);
+        } else {
+            currentPlayingPosition = -1;
+            currentPlayingSong = null;
         }
     }
 
@@ -122,34 +139,30 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
     }
 
     // Méthode pour déplacer un élément dans la liste
-    // Améliorée pour supporter le déplacement sur plusieurs positions
+    // Ne gère plus l'indicateur de position courante
     public void moveItem(int fromPosition, int toPosition) {
-        // Vérifier que les positions sont valides
-        if (fromPosition < 0 || fromPosition >= songList.size() || 
-            toPosition < 0 || toPosition >= songList.size()) {
+        if (fromPosition < 0 || fromPosition >= songList.size() ||
+                toPosition < 0 || toPosition >= songList.size()) {
             return;
         }
-        
-        // Sauvegarder l'élément à déplacer
-        Song movedSong = songList.get(fromPosition);
-        
-        // Mettre à jour la position du morceau en cours si nécessaire
-        if (fromPosition == currentPlayingPosition) {
-            currentPlayingPosition = toPosition;
-        } else if (fromPosition < currentPlayingPosition && toPosition >= currentPlayingPosition) {
-            currentPlayingPosition--;
-        } else if (fromPosition > currentPlayingPosition && toPosition <= currentPlayingPosition) {
-            currentPlayingPosition++;
-        }
 
-        // Supprimer l'élément de sa position d'origine
-        songList.remove(fromPosition);
-        
-        // Insérer l'élément à sa nouvelle position
+        // Sauvegarder la chanson en cours avant le déplacement
+        Song playingSong = currentPlayingSong;
+
+        // Déplacer la chanson dans la liste
+        Song movedSong = songList.remove(fromPosition);
         songList.add(toPosition, movedSong);
-        
-        // Notifier l'adapter du déplacement
+
+        // Notifier l'adaptateur du déplacement
         notifyItemMoved(fromPosition, toPosition);
+
+        // Mettre à jour la position de la chanson en cours si nécessaire
+        if (playingSong != null) {
+            int newPlayingPosition = songList.indexOf(playingSong);
+            if (newPlayingPosition != -1) {
+                setCurrentPlayingPosition(newPlayingPosition);
+            }
+        }
     }
 
     // Méthode pour obtenir la liste des chansons
