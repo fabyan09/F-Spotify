@@ -129,6 +129,7 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
     }
 
     // Méthode pour déplacer un élément dans la liste
+    // Simplifiée pour le drag & drop multi-positions
     public void moveItem(int fromPosition, int toPosition) {
         if (fromPosition < 0 || fromPosition >= songList.size() ||
                 toPosition < 0 || toPosition >= songList.size()) {
@@ -140,35 +141,12 @@ public class QueueAdapter extends RecyclerView.Adapter<QueueAdapter.QueueViewHol
             return;
         }
 
-        // Sauvegarder la chanson en cours avant le déplacement
-        Song playingSong = currentPlayingSong;
-
         // Déplacer la chanson dans la liste
         Song movedSong = songList.remove(fromPosition);
         songList.add(toPosition, movedSong);
 
         // Notifier l'adaptateur du déplacement
         notifyItemMoved(fromPosition, toPosition);
-
-        // Pour les déplacements sur plusieurs positions
-        if (Math.abs(fromPosition - toPosition) > 1) {
-            int start = Math.min(fromPosition, toPosition);
-            int end = Math.max(fromPosition, toPosition);
-            notifyItemRangeChanged(start, end - start + 1);
-        }
-
-        // Mettre à jour la position de la chanson en cours si nécessaire
-        if (playingSong != null) {
-            for (int i = 0; i < songList.size(); i++) {
-                Song song = songList.get(i);
-                if (song.getTitle().equals(playingSong.getTitle()) &&
-                    song.getArtist().equals(playingSong.getArtist()) &&
-                    song.getMp3().equals(playingSong.getMp3())) {
-                    currentPlayingPosition = i;
-                    break;
-                }
-            }
-        }
     }
 
     // Méthode pour obtenir la liste des chansons

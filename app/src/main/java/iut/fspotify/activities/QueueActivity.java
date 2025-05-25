@@ -99,6 +99,10 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
         ItemTouchHelper.Callback callback = new ItemTouchHelper.SimpleCallback(
                 ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
 
+            // Variables pour suivre la position initiale et finale du drag
+            private int dragFrom = -1;
+            private int dragTo = -1;
+
             @Override
             public boolean onMove(@NonNull RecyclerView recyclerView,
                                   @NonNull RecyclerView.ViewHolder viewHolder,
@@ -111,38 +115,55 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
                     return false;
                 }
 
-                // Sauvegarder la chanson en cours AVANT tout déplacement
-                Song currentSong = null;
-                if (serviceBound && musicService.getCurrentQueueIndex() >= 0 && 
-                    musicService.getCurrentQueueIndex() < musicService.getQueue().size()) {
-                    currentSong = musicService.getQueue().get(musicService.getCurrentQueueIndex());
+                // Suivre les positions de début et de fin du drag
+                if (dragFrom == -1) {
+                    dragFrom = fromPosition;
                 }
+                dragTo = toPosition;
 
-                // Mettre à jour l'adapter
+                // Effectuer le déplacement d'une position à la fois dans l'adapter
                 adapter.moveItem(fromPosition, toPosition);
 
-                // Mettre à jour la queue dans le service
-                if (serviceBound) {
-                    // Mettre à jour la queue dans le service
-                    musicService.setQueue(adapter.getSongList());
+                return true;
+            }
 
-                    // Retrouver la position de la chanson en cours après le déplacement
-                    if (currentSong != null) {
-                        List<Song> newQueue = adapter.getSongList();
-                        for (int i = 0; i < newQueue.size(); i++) {
-                            Song song = newQueue.get(i);
-                            if (isSameSong(song, currentSong)) {
-                                // Mettre à jour l'index silencieusement
-                                musicService.setCurrentQueueIndexSilently(i);
-                                // Forcer la mise à jour visuelle
-                                adapter.setCurrentPlayingPosition(i);
-                                break;
+            @Override
+            public void clearView(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+                super.clearView(recyclerView, viewHolder);
+
+                // Le drag est terminé, mettre à jour la queue dans le service
+                if (dragFrom != -1 && dragTo != -1 && dragFrom != dragTo) {
+                    // Sauvegarder la chanson en cours AVANT tout déplacement
+                    Song currentSong = null;
+                    if (serviceBound && musicService.getCurrentQueueIndex() >= 0 &&
+                            musicService.getCurrentQueueIndex() < musicService.getQueue().size()) {
+                        currentSong = musicService.getQueue().get(musicService.getCurrentQueueIndex());
+                    }
+
+                    // Mettre à jour la queue dans le service
+                    if (serviceBound) {
+                        // Mettre à jour la queue dans le service
+                        musicService.setQueue(adapter.getSongList());
+
+                        // Retrouver la position de la chanson en cours après le déplacement
+                        if (currentSong != null) {
+                            List<Song> newQueue = adapter.getSongList();
+                            for (int i = 0; i < newQueue.size(); i++) {
+                                Song song = newQueue.get(i);
+                                if (isSameSong(song, currentSong)) {
+                                    // Mettre à jour l'index silencieusement
+                                    musicService.setCurrentQueueIndexSilently(i);
+                                    // Forcer la mise à jour visuelle
+                                    adapter.setCurrentPlayingPosition(i);
+                                    break;
+                                }
                             }
                         }
                     }
                 }
 
-                return true;
+                // Réinitialiser les positions de drag
+                dragFrom = dragTo = -1;
             }
 
             @Override
@@ -230,9 +251,9 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
     // Méthode utilitaire pour comparer deux chansons par leur identité
     private boolean isSameSong(Song song1, Song song2) {
         return song1 != null && song2 != null &&
-               song1.getTitle().equals(song2.getTitle()) &&
-               song1.getArtist().equals(song2.getArtist()) &&
-               song1.getMp3().equals(song2.getMp3());
+                song1.getTitle().equals(song2.getTitle()) &&
+                song1.getArtist().equals(song2.getArtist()) &&
+                song1.getMp3().equals(song2.getMp3());
     }
 
     private void filterList(String query) {
