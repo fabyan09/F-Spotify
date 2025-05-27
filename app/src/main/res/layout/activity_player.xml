@@ -50,15 +50,32 @@
                 </ScrollView>
             </FrameLayout>
 
-            <TextView
-                android:id="@+id/title_text"
-                android:layout_width="wrap_content"
+            <!-- Titre et bouton info -->
+            <RelativeLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
-                android:textSize="24sp"
-                android:textStyle="bold"
-                android:textColor="@color/black"
-                android:layout_gravity="center_horizontal"/>
+                android:layout_marginTop="22dp">
+
+                <TextView
+                    android:id="@+id/title_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/black"
+                    android:layout_centerHorizontal="true"/>
+
+                <ImageButton
+                    android:id="@+id/info_button"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_more_vert"
+                    android:contentDescription="Plus d'informations"
+                    android:scaleType="fitCenter"/>
+            </RelativeLayout>
 
             <TextView
                 android:id="@+id/artist_album_text"

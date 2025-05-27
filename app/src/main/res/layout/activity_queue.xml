@@ -13,14 +13,32 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <SearchView
-            android:id="@+id/search_view"
+        <!-- Barre de recherche et bouton filtre -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:queryHint="Rechercher une chanson"
-            android:iconifiedByDefault="false"
-            android:background="#33FFFFFF"
-            android:layout_marginBottom="8dp" />
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <SearchView
+                android:id="@+id/search_view"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:queryHint="Rechercher une chanson"
+                android:iconifiedByDefault="false"
+                android:background="#33FFFFFF" />
+
+            <ImageButton
+                android:id="@+id/filter_button"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="8dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_sort_by_size"
+                android:contentDescription="Filtrer"
+                android:scaleType="fitCenter"/>
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/queue_recycler_view"

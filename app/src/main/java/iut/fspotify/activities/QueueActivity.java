@@ -1,5 +1,6 @@
 package iut.fspotify.activities;
 
+import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -10,7 +11,12 @@ import android.os.IBinder;
 import android.text.TextUtils;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.SearchView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -21,6 +27,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +48,9 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
     private BottomNavigationView bottomNavigationView;
     private RecyclerView recyclerView;
     private boolean isSearchActive = false;
+    private ImageButton filterButton;
+    private SharedPreferences ratingPrefs;
+    private String currentSortOption = ""; // Pour suivre l'option de tri actuelle
 
     // Service de lecture musicale
     private MusicPlayerService musicService;
@@ -78,10 +89,14 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
 
         recyclerView = findViewById(R.id.queue_recycler_view);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        filterButton = findViewById(R.id.filter_button);
 
         // Initialisation du menu de navigation
         bottomNavigationView = findViewById(R.id.bottom_navigation);
         bottomNavigationView.setSelectedItemId(R.id.nav_queue);
+
+        // Initialiser les préférences pour les notes
+        ratingPrefs = getSharedPreferences("SONG_RATINGS", Context.MODE_PRIVATE);
 
         // Démarrer et lier le service
         Intent intent = new Intent(this, MusicPlayerService.class);
@@ -93,6 +108,9 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
         if (songList.isEmpty()) {
             songList = CSVParser.parseCSV();
             filteredList.addAll(songList);
+
+            // Charger les notes pour toutes les chansons
+            loadAllSongRatings();
         }
 
         // Configuration du ItemTouchHelper pour le drag & drop
@@ -223,6 +241,9 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
             }
         });
 
+        // Configuration du bouton de filtre
+        filterButton.setOnClickListener(v -> showFilterDialog());
+
         // Configuration de la navigation avec if/else au lieu de switch/case
         bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
@@ -246,6 +267,158 @@ public class QueueActivity extends AppCompatActivity implements MusicPlayerServi
                 return false;
             }
         });
+    }
+
+    // Méthode pour afficher le dialogue de filtre
+    private void showFilterDialog() {
+        final Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.filter_dialog);
+
+        RadioGroup sortOptions = dialog.findViewById(R.id.sort_options);
+        Button applyButton = dialog.findViewById(R.id.apply_sort_button);
+
+        // Sélectionner l'option de tri actuelle si elle existe
+        if (!TextUtils.isEmpty(currentSortOption)) {
+            int radioButtonId = getRadioButtonIdFromSortOption(currentSortOption);
+            if (radioButtonId != -1) {
+                sortOptions.check(radioButtonId);
+            }
+        }
+
+        applyButton.setOnClickListener(v -> {
+            int selectedId = sortOptions.getCheckedRadioButtonId();
+            if (selectedId != -1) {
+                RadioButton radioButton = dialog.findViewById(selectedId);
+                String sortOption = getSortOptionFromRadioButton(selectedId);
+
+                // Appliquer le tri
+                applySorting(sortOption);
+
+                // Afficher un message de confirmation
+                Toast.makeText(QueueActivity.this,
+                        "Tri appliqué : " + radioButton.getText(),
+                        Toast.LENGTH_SHORT).show();
+
+                dialog.dismiss();
+            } else {
+                Toast.makeText(QueueActivity.this,
+                        "Veuillez sélectionner une option de tri",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        dialog.show();
+    }
+
+    // Méthode pour obtenir l'ID du RadioButton à partir de l'option de tri
+    private int getRadioButtonIdFromSortOption(String sortOption) {
+        if ("title".equals(sortOption)) {
+            return R.id.sort_title;
+        } else if ("album".equals(sortOption)) {
+            return R.id.sort_album;
+        } else if ("artist".equals(sortOption)) {
+            return R.id.sort_artist;
+        } else if ("rating".equals(sortOption)) {
+            return R.id.sort_rating;
+        } else if ("date".equals(sortOption)) {
+            return R.id.sort_date;
+        } else if ("duration".equals(sortOption)) {
+            return R.id.sort_duration;
+        } else {
+            return -1;
+        }
+    }
+
+
+    // Méthode pour obtenir l'option de tri à partir de l'ID du RadioButton
+    private String getSortOptionFromRadioButton(int radioButtonId) {
+        if (radioButtonId == R.id.sort_title) {
+            return "title";
+        } else if (radioButtonId == R.id.sort_album) {
+            return "album";
+        } else if (radioButtonId == R.id.sort_artist) {
+            return "artist";
+        } else if (radioButtonId == R.id.sort_rating) {
+            return "rating";
+        } else if (radioButtonId == R.id.sort_date) {
+            return "date";
+        } else if (radioButtonId == R.id.sort_duration) {
+            return "duration";
+        } else {
+            return "";
+        }
+    }
+
+
+    // Méthode pour appliquer le tri à la liste
+    private void applySorting(String sortOption) {
+        if (serviceBound) {
+            // Sauvegarder la chanson en cours avant le tri
+            Song currentSong = null;
+            if (musicService.getCurrentQueueIndex() >= 0 &&
+                    musicService.getCurrentQueueIndex() < musicService.getQueue().size()) {
+                currentSong = musicService.getQueue().get(musicService.getCurrentQueueIndex());
+            }
+
+            // Récupérer la liste complète
+            List<Song> queue = new ArrayList<>(musicService.getQueue());
+
+            // Appliquer le tri selon l'option choisie
+            switch (sortOption) {
+                case "title":
+                    Collections.sort(queue, Comparator.comparing(Song::getTitle));
+                    break;
+                case "album":
+                    Collections.sort(queue, Comparator.comparing(Song::getAlbum));
+                    break;
+                case "artist":
+                    Collections.sort(queue, Comparator.comparing(Song::getArtist));
+                    break;
+                case "rating":
+                    Collections.sort(queue, (s1, s2) -> Float.compare(s2.getRating(), s1.getRating())); // Note décroissante
+                    break;
+                case "date":
+                    Collections.sort(queue, (s1, s2) -> s2.getDate().compareTo(s1.getDate())); // Date décroissante
+                    break;
+                case "duration":
+                    Collections.sort(queue, (s1, s2) -> Float.compare(s2.getDuration(), s1.getDuration())); // Durée décroissante
+                    break;
+            }
+
+            // Mettre à jour la queue dans le service
+            musicService.setQueue(queue);
+
+            // Retrouver la position de la chanson en cours après le tri
+            if (currentSong != null) {
+                for (int i = 0; i < queue.size(); i++) {
+                    if (isSameSong(queue.get(i), currentSong)) {
+                        musicService.setCurrentQueueIndexSilently(i);
+                        break;
+                    }
+                }
+            }
+
+            // Mettre à jour l'affichage
+            updateQueueFromService();
+
+            // Sauvegarder l'option de tri actuelle
+            currentSortOption = sortOption;
+        }
+    }
+
+    // Méthode pour charger les notes de toutes les chansons
+    private void loadAllSongRatings() {
+        for (Song song : songList) {
+            String key = getSongRatingKey(song);
+            float rating = ratingPrefs.getFloat(key, 0);
+            song.setRating(rating);
+        }
+    }
+
+    // Méthode pour générer une clé unique pour la note d'une chanson
+    private String getSongRatingKey(Song song) {
+        return song.getTitle().trim().toLowerCase() + "_" +
+               song.getArtist().trim().toLowerCase();
     }
 
     // Méthode utilitaire pour comparer deux chansons par leur identité

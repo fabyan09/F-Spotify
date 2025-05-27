@@ -55,10 +55,9 @@
             android:layout_marginStart="8dp">
 
             <!-- Informations sur la chanson -->
-            <LinearLayout
+            <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
                 android:layout_marginTop="16dp">
 
                 <TextView
@@ -68,30 +67,41 @@
                     android:textSize="22sp"
                     android:textStyle="bold"
                     android:textColor="@color/black"
-                    android:layout_gravity="center_horizontal"/>
+                    android:layout_centerHorizontal="true"/>
 
-                <TextView
-                    android:id="@+id/artist_album_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:textSize="16sp"
-                    android:textStyle="italic"
-                    android:textColor="@android:color/black"
-                    android:layout_gravity="center_horizontal" />
-
-                <!-- Bouton Like -->
                 <ImageButton
-                    android:id="@+id/like_button"
-                    android:layout_width="35dp"
-                    android:layout_height="35dp"
+                    android:id="@+id/info_button"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/empty_like"
-                    android:layout_marginTop="12dp"
-                    android:contentDescription="like"
-                    android:layout_gravity="center_horizontal"
+                    android:src="@drawable/ic_more_vert"
+                    android:contentDescription="Plus d'informations"
                     android:scaleType="fitCenter"/>
-            </LinearLayout>
+            </RelativeLayout>
+
+            <TextView
+                android:id="@+id/artist_album_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="16sp"
+                android:textStyle="italic"
+                android:textColor="@android:color/black"
+                android:layout_gravity="center_horizontal" />
+
+            <!-- Bouton Like -->
+            <ImageButton
+                android:id="@+id/like_button"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/empty_like"
+                android:layout_marginTop="12dp"
+                android:contentDescription="like"
+                android:layout_gravity="center_horizontal"
+                android:scaleType="fitCenter"/>
 
             <!-- Espace flexible -->
             <Space

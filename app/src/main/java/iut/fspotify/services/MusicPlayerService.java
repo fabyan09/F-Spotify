@@ -58,6 +58,12 @@ public class MusicPlayerService extends Service {
     // Verrou pour éviter les appels multiples
     private boolean isLoadingSong = false;
 
+    // Durée calculée à partir du CSV (en millisecondes)
+    private int calculatedDuration = 0;
+
+    // Durée réelle du fichier audio (en millisecondes)
+    private int actualDuration = 0;
+
     // Interface pour les callbacks
     public interface OnMusicPlayerListener {
         void onPlaybackStateChanged(boolean isPlaying);
@@ -87,7 +93,19 @@ public class MusicPlayerService extends Service {
             if (isPlaying) {
                 mp.start();
             }
+
+            // Stocker la durée réelle du fichier audio
+            actualDuration = mp.getDuration();
+
+            // Utiliser la durée calculée à partir du CSV pour l'affichage
+            // mais garder la durée réelle pour la seekbar
+
+            // Log pour déboguer les problèmes de durée
+            Log.d(TAG, "onPrepared: calculatedDuration=" + calculatedDuration +
+                    ", actualDuration=" + actualDuration);
+
             notifyPlaybackStateChanged();
+            notifyProgressChanged(currentPosition, calculatedDuration);
             startProgressUpdates();
             isLoadingSong = false; // Libérer le verrou une fois la chanson chargée
 
@@ -233,6 +251,11 @@ public class MusicPlayerService extends Service {
             // Définir la nouvelle source
             mediaPlayer.setDataSource("http://edu.info06.net/lyrics/mp3/" + song.getMp3());
 
+            // Calculer la durée à partir du CSV (en minutes) et la convertir en millisecondes
+            calculatedDuration = (int) (song.getDuration() * 60000);
+            Log.d(TAG, "loadSong: " + song.getTitle() + ", CSV duration=" + song.getDuration() +
+                    ", calculatedDuration=" + calculatedDuration + "ms");
+
             // Préparer de manière asynchrone
             mediaPlayer.prepareAsync();
 
@@ -276,7 +299,8 @@ public class MusicPlayerService extends Service {
     public void seekForward() {
         if (mediaPlayer != null) {
             int newPosition = mediaPlayer.getCurrentPosition() + 10000;
-            mediaPlayer.seekTo(Math.min(newPosition, mediaPlayer.getDuration()));
+            // Utiliser la durée réelle du fichier pour la seekbar
+            mediaPlayer.seekTo(Math.min(newPosition, actualDuration));
             notifyProgressChanged();
         }
     }
@@ -293,7 +317,23 @@ public class MusicPlayerService extends Service {
     // Méthode pour se déplacer à une position spécifique
     public void seekTo(int position) {
         if (mediaPlayer != null) {
-            mediaPlayer.seekTo(position);
+            // Convertir la position relative à la durée calculée en position relative à la durée réelle
+            if (calculatedDuration > 0 && actualDuration > 0) {
+                // Calculer le ratio de la position par rapport à la durée calculée
+                float ratio = (float) position / calculatedDuration;
+                // Appliquer ce ratio à la durée réelle
+                int actualPosition = (int) (ratio * actualDuration);
+
+                Log.d(TAG, "seekTo: position=" + position + ", calculatedDuration=" + calculatedDuration +
+                        ", ratio=" + ratio + ", actualPosition=" + actualPosition +
+                        ", actualDuration=" + actualDuration);
+
+                // Utiliser la position convertie
+                mediaPlayer.seekTo(Math.min(actualPosition, actualDuration));
+            } else {
+                // Fallback si les durées ne sont pas disponibles
+                mediaPlayer.seekTo(position);
+            }
             notifyProgressChanged();
         }
     }
@@ -301,6 +341,11 @@ public class MusicPlayerService extends Service {
     // Méthode pour obtenir la position actuelle
     public int getCurrentPosition() {
         if (mediaPlayer != null) {
+            // Convertir la position réelle en position relative à la durée calculée
+            if (calculatedDuration > 0 && actualDuration > 0) {
+                float ratio = (float) mediaPlayer.getCurrentPosition() / actualDuration;
+                return (int) (ratio * calculatedDuration);
+            }
             return mediaPlayer.getCurrentPosition();
         }
         return 0;
@@ -308,7 +353,10 @@ public class MusicPlayerService extends Service {
 
     // Méthode pour obtenir la durée totale
     public int getDuration() {
-        if (mediaPlayer != null) {
+        // Toujours retourner la durée calculée pour l'affichage
+        if (calculatedDuration > 0) {
+            return calculatedDuration;
+        } else if (mediaPlayer != null) {
             return mediaPlayer.getDuration();
         }
         return 0;
@@ -386,9 +434,15 @@ public class MusicPlayerService extends Service {
             if (currentSong != null) {
                 listener.onSongChanged(currentSong);
                 listener.onPlaybackStateChanged(isPlaying);
-                if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                    listener.onProgressChanged(mediaPlayer.getCurrentPosition(), mediaPlayer.getDuration());
-                }
+
+                // Utiliser la durée calculée pour l'affichage
+                int duration = calculatedDuration > 0 ? calculatedDuration :
+                        (mediaPlayer != null ? mediaPlayer.getDuration() : 0);
+
+                // Convertir la position réelle en position relative à la durée calculée
+                int position = getCurrentPosition();
+
+                listener.onProgressChanged(position, duration);
             }
             listener.onQueueChanged(queue, currentQueueIndex);
         }
@@ -416,9 +470,22 @@ public class MusicPlayerService extends Service {
     // Méthode pour notifier les changements de progression
     private void notifyProgressChanged() {
         if (mediaPlayer != null) {
+            // Convertir la position réelle en position relative à la durée calculée
+            int position = getCurrentPosition();
+
+            // Utiliser la durée calculée pour l'affichage
+            int duration = calculatedDuration > 0 ? calculatedDuration : actualDuration;
+
             for (OnMusicPlayerListener listener : listeners) {
-                listener.onProgressChanged(mediaPlayer.getCurrentPosition(), mediaPlayer.getDuration());
+                listener.onProgressChanged(position, duration);
             }
+        }
+    }
+
+    // Méthode pour notifier les changements de progression avec des valeurs spécifiques
+    private void notifyProgressChanged(int position, int duration) {
+        for (OnMusicPlayerListener listener : listeners) {
+            listener.onProgressChanged(position, duration);
         }
     }
 
