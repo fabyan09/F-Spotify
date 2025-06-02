@@ -6,15 +6,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.StrictMode;
-import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -276,8 +277,6 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
         infoArtist.setText(song.getArtist());
         infoAlbum.setText(song.getAlbum());
         infoDate.setText(song.getDate());
-
-        // Convertir correctement la durée du CSV (en minutes) en millisecondes
         infoDuration.setText(formatTime((int) (song.getDuration() * 60000)));
         infoFile.setText(song.getMp3());
 
@@ -288,21 +287,21 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
 
         // Configurer le listener de la barre de notation
         ratingBar.setOnRatingBarChangeListener((rBar, value, fromUser) -> {
-            if (fromUser) {
-                // Sauvegarder la nouvelle note
-                saveSongRating(song, value);
-                Toast.makeText(PlayerActivity.this,
-                        "Note mise à jour : " + value + " étoiles",
-                        Toast.LENGTH_SHORT).show();
-            }
+            SharedPreferences.Editor editor = ratingPrefs.edit();
+            editor.putFloat(ratingKey, value);
+            editor.apply();
         });
 
         // Configurer le bouton de fermeture
         closeButton.setOnClickListener(v -> dialog.dismiss());
 
+        // Afficher le dialogue avec une taille adaptée en mode paysage
+        if (getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
         dialog.show();
     }
-
     // Méthode pour générer une clé unique pour la note d'une chanson
     private String getSongRatingKey(Song song) {
         return song.getTitle().trim().toLowerCase() + "_" +
@@ -369,8 +368,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
 
     private void updateLikeIcon(String key) {
         boolean liked = prefs.getBoolean(key, false);
-        Log.d(TAG, "updateLikeIcon: " + key + " = " + liked);
-        // Utiliser les icônes personnalisées au lieu des icônes Android par défaut
+        // Suppression du log inutile
         likeButton.setImageResource(liked ? R.drawable.like : R.drawable.empty_like);
     }
 
@@ -409,10 +407,8 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
             seekBar.setProgress(position);
             current_time.setText(formatTime(position));
             total_duration.setText(formatTime(duration));
-
-            // Log pour déboguer les problèmes de durée
-            Log.d(TAG, "onProgressChanged: position=" + position + ", duration=" + duration +
-                    ", formatted=" + formatTime(duration));
+            
+            // Suppression du log inutile qui polluait le logcat
         });
     }
 

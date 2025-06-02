@@ -49,6 +49,7 @@
         <!-- Partie droite : Informations et contrôles -->
         <LinearLayout
             android:layout_width="0dp"
+            android:layout_marginTop="70dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
@@ -114,7 +115,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="1dp"
                 android:gravity="center_vertical">
 
                 <TextView

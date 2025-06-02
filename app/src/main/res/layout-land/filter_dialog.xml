@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Trier par"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:layout_marginBottom="16dp" />
+
+            <RadioGroup
+                android:id="@+id/sort_options"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <RadioButton
+                    android:id="@+id/sort_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Titre (A-Z)"
+                    android:padding="8dp"/>
+
+                <RadioButton
+                    android:id="@+id/sort_album"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Album (A-Z)"
+                    android:padding="8dp"/>
+
+                <RadioButton
+                    android:id="@+id/sort_artist"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Artiste (A-Z)"
+                    android:padding="8dp"/>
+
+                <RadioButton
+                    android:id="@+id/sort_rating"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Note (5-0)"
+                    android:padding="8dp"/>
+
+                <RadioButton
+                    android:id="@+id/sort_date"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Date (récent-ancien)"
+                    android:padding="8dp"/>
+
+                <RadioButton
+                    android:id="@+id/sort_duration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Durée (long-court)"
+                    android:padding="8dp"/>
+            </RadioGroup>
+        </LinearLayout>
+    </ScrollView>
+
+    <Button
+        android:id="@+id/apply_sort_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Appliquer"
+        android:layout_margin="16dp" />
+
+</LinearLayout>
