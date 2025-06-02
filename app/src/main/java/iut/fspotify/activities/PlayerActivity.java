@@ -1,5 +1,7 @@
 package iut.fspotify.activities;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
 import android.app.Dialog;
 import android.content.ComponentName;
 import android.content.Context;
@@ -16,6 +18,8 @@ import android.os.StrictMode;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -59,6 +63,13 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
     private Handler handler = new Handler();
     private Runnable updateSeekBar;
     private BottomNavigationView bottomNavigationView;
+    
+    // Variables pour les animations
+    private boolean isAnimatingCover = false;
+    private ImageView nextCoverImage;
+    private FrameLayout mediaContainer;
+    private int lastDirection = 0; // 1 pour next, -1 pour previous
+    private Song nextSong = null; // Pour stocker la chanson suivante pendant l'animation
 
     // Connexion au service
     private ServiceConnection serviceConnection = new ServiceConnection() {
@@ -136,7 +147,16 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
         seekBar = findViewById(R.id.seek_bar);
         current_time = findViewById(R.id.current_time);
         total_duration = findViewById(R.id.total_duration);
-        FrameLayout mediaContainer = findViewById(R.id.media_container);
+        mediaContainer = findViewById(R.id.media_container);
+        
+        // Création de l'ImageView pour l'animation de transition
+        nextCoverImage = new ImageView(this);
+        nextCoverImage.setLayoutParams(new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
+        nextCoverImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        nextCoverImage.setVisibility(View.GONE);
+        mediaContainer.addView(nextCoverImage);
 
         // Initialisation du menu de navigation
         bottomNavigationView = findViewById(R.id.bottom_navigation);
@@ -166,18 +186,22 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
 
         play.setOnClickListener(v -> {
             if (serviceBound) {
+                // Animation du bouton play/pause
+                animatePlayPauseButton();
                 musicService.playPause();
             }
         });
 
         next.setOnClickListener(v -> {
             if (serviceBound) {
+                lastDirection = 1; // Direction vers la droite (next)
                 musicService.playNextInQueue();
             }
         });
 
         prev.setOnClickListener(v -> {
             if (serviceBound) {
+                lastDirection = -1; // Direction vers la gauche (previous)
                 musicService.playPreviousInQueue();
             }
         });
@@ -256,6 +280,138 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
             }
         });
     }
+    
+    // Animation du bouton play/pause
+    private void animatePlayPauseButton() {
+        // Créer une animation de rotation et de mise à l'échelle
+        ObjectAnimator scaleXAnimator = ObjectAnimator.ofFloat(play, "scaleX", 1f, 0.8f, 1f);
+        ObjectAnimator scaleYAnimator = ObjectAnimator.ofFloat(play, "scaleY", 1f, 0.8f, 1f);
+        ObjectAnimator rotateAnimator = ObjectAnimator.ofFloat(play, "rotation", 0f, 360f);
+        
+        // Configurer les animations
+        scaleXAnimator.setDuration(300);
+        scaleYAnimator.setDuration(300);
+        rotateAnimator.setDuration(300);
+        
+        // Créer un ensemble d'animations
+        AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.playTogether(scaleXAnimator, scaleYAnimator, rotateAnimator);
+        animatorSet.setInterpolator(new AccelerateDecelerateInterpolator());
+        
+        // Démarrer l'animation
+        animatorSet.start();
+    }
+    
+    // Animation de transition de la cover
+    private void animateCoverTransition(Song newSong, int direction) {
+        if (isAnimatingCover || showingLyrics) {
+            // Si une animation est déjà en cours ou si on affiche les paroles, on ne fait rien
+            updateUIWithoutAnimation(newSong);
+            return;
+        }
+        
+        isAnimatingCover = true;
+        nextSong = newSong;
+        
+        // Mettre à jour immédiatement le titre et les informations de la chanson
+        updateSongInfo(newSong);
+        
+        // Préparer la nouvelle image
+        nextCoverImage.setVisibility(View.VISIBLE);
+        nextCoverImage.setAlpha(1f);
+        
+        // Charger l'image de la nouvelle chanson dans nextCoverImage
+        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
+        try {
+            URL url = new URL("http://edu.info06.net/lyrics/images/" + newSong.cover);
+            InputStream input = url.openStream();
+            Bitmap bitmap = BitmapFactory.decodeStream(input);
+            nextCoverImage.setImageBitmap(bitmap);
+        } catch (Exception e) {
+            e.printStackTrace();
+            nextCoverImage.setImageResource(R.drawable.placeholder);
+        }
+        
+        // Positionner l'image hors écran selon la direction
+        float screenWidth = getResources().getDisplayMetrics().widthPixels;
+        nextCoverImage.setTranslationX(direction * screenWidth);
+        
+        // S'assurer que les deux images ont exactement la même taille
+        nextCoverImage.setScaleType(cover.getScaleType());
+        nextCoverImage.setPadding(cover.getPaddingLeft()+10, cover.getPaddingTop()+55,
+                                 cover.getPaddingRight(), cover.getPaddingBottom());
+        
+        // Animer la sortie de l'image actuelle
+        ObjectAnimator exitAnimator = ObjectAnimator.ofFloat(
+                cover, "translationX", 0f, -direction * screenWidth);
+        exitAnimator.setDuration(500);
+        exitAnimator.setInterpolator(new DecelerateInterpolator());
+        
+        // Animer l'entrée de la nouvelle image
+        ObjectAnimator enterAnimator = ObjectAnimator.ofFloat(
+                nextCoverImage, "translationX", direction * screenWidth, 0f);
+        enterAnimator.setDuration(500);
+        enterAnimator.setInterpolator(new DecelerateInterpolator());
+        
+        // Créer un ensemble d'animations
+        AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.playTogether(exitAnimator, enterAnimator);
+        
+        // Définir un listener pour la fin de l'animation
+        animatorSet.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                // Échanger les images
+                cover.setImageDrawable(nextCoverImage.getDrawable());
+                cover.setTranslationX(0f);
+                nextCoverImage.setVisibility(View.GONE);
+                
+                // Mettre à jour les paroles
+                if (nextSong != null) {
+                    String formattedLyrics = nextSong.lyrics.replace(";", "\n");
+                    lyrics.setText(formattedLyrics);
+                }
+                
+                isAnimatingCover = false;
+                nextSong = null;
+            }
+        });
+        
+        // Démarrer l'animation
+        animatorSet.start();
+    }
+    
+    // Mise à jour des informations de la chanson sans animer la cover
+    private void updateUIWithoutAnimation(Song song) {
+        updateSongInfo(song);
+        
+        // Mettre à jour les paroles
+        String formattedLyrics = song.lyrics.replace(";", "\n");
+        lyrics.setText(formattedLyrics);
+        
+        // Mettre à jour la cover
+        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
+        try {
+            URL url = new URL("http://edu.info06.net/lyrics/images/" + song.cover);
+            InputStream input = url.openStream();
+            Bitmap bitmap = BitmapFactory.decodeStream(input);
+            cover.setImageBitmap(bitmap);
+        } catch (Exception e) {
+            e.printStackTrace();
+            cover.setImageResource(R.drawable.placeholder); // Image par défaut
+        }
+        
+        updateLikeIcon(song.title.trim().toLowerCase());
+        loadSongRating(song);
+    }
+    
+    // Mise à jour uniquement des informations textuelles de la chanson
+    private void updateSongInfo(Song song) {
+        title.setText(song.title);
+        artistAlbumText.setText(song.getArtist() + " - " + song.getAlbum());
+        updateLikeIcon(song.title.trim().toLowerCase());
+        loadSongRating(song);
+    }
 
     // Méthode pour afficher le dialogue d'information sur la chanson
     private void showSongInfoDialog(Song song) {
@@ -325,28 +481,10 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
     }
 
     private void updateUI(Song song) {
-        title.setText(song.title);
-        artistAlbumText.setText(song.getArtist() + " - " + song.getAlbum());
-
-        // Formater les paroles pour l'affichage
-        String formattedLyrics = song.lyrics.replace(";", "\n");
-        lyrics.setText(formattedLyrics);
-
-        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
-        try {
-            URL url = new URL("http://edu.info06.net/lyrics/images/" + song.cover );
-            InputStream input = url.openStream();
-            Bitmap bitmap = BitmapFactory.decodeStream(input);
-            cover.setImageBitmap(bitmap);
-        } catch (Exception e) {
-            e.printStackTrace();
-            cover.setImageResource(R.drawable.placeholder); // Image par défaut
+        // Si nous ne sommes pas en train d'animer la cover, la mettre à jour directement
+        if (!isAnimatingCover) {
+            updateUIWithoutAnimation(song);
         }
-
-        updateLikeIcon(song.title.trim().toLowerCase());
-
-        // Charger la note de la chanson
-        loadSongRating(song);
     }
 
     private void updatePlayPauseButton(boolean isPlaying) {
@@ -397,7 +535,16 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
 
     @Override
     public void onSongChanged(Song song) {
-        runOnUiThread(() -> updateUI(song));
+        runOnUiThread(() -> {
+            // Animer la transition de la cover si une direction a été définie
+            if (lastDirection != 0) {
+                animateCoverTransition(song, lastDirection);
+                lastDirection = 0; // Réinitialiser la direction
+            } else {
+                // Mise à jour normale sans animation
+                updateUI(song);
+            }
+        });
     }
 
     @Override
