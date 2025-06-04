@@ -27,7 +27,7 @@
                 android:layout_weight="1"
                 android:queryHint="Rechercher une chanson"
                 android:iconifiedByDefault="false"
-                android:background="#33FFFFFF" />
+                android:background="#BBFFFFFF" />
 
             <ImageButton
                 android:id="@+id/filter_button"

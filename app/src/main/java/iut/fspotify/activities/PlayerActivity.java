@@ -55,7 +55,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
     private boolean showingLyrics = false;
     private SharedPreferences prefs;
     private SharedPreferences ratingPrefs; // Pour stocker les notes des chansons
-    private ImageView cover;
+    private ImageView cover, aura;
     private ScrollView lyricsScroll;
     private TextView lyrics, title, artistAlbumText, total_duration, current_time;
     private ImageButton play, next, prev, forward, rewind, likeButton, infoButton;
@@ -135,6 +135,7 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
         cover = findViewById(R.id.cover_image);
         lyrics = findViewById(R.id.lyrics_text);
         lyricsScroll = findViewById(R.id.lyrics_scroll);
+        aura = findViewById(R.id.aura_image); // Image de l'aura
         title = findViewById(R.id.title_text);
         artistAlbumText = findViewById(R.id.artist_album_text);
         play = findViewById(R.id.play_button);
@@ -176,12 +177,14 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
             showingLyrics = !showingLyrics;
             cover.setVisibility(showingLyrics ? View.GONE : View.VISIBLE);
             lyricsScroll.setVisibility(showingLyrics ? View.VISIBLE : View.GONE);
+            aura.setVisibility(showingLyrics ? View.GONE : View.VISIBLE);
         });
 
         lyrics.setOnClickListener(v -> {
             showingLyrics = false;
             lyricsScroll.setVisibility(View.GONE);
             cover.setVisibility(View.VISIBLE);
+            aura.setVisibility(View.VISIBLE);
         });
 
         play.setOnClickListener(v -> {
@@ -338,24 +341,32 @@ public class PlayerActivity extends AppCompatActivity implements MusicPlayerServ
         
         // S'assurer que les deux images ont exactement la même taille
         nextCoverImage.setScaleType(cover.getScaleType());
-        nextCoverImage.setPadding(cover.getPaddingLeft()+10, cover.getPaddingTop()+55,
-                                 cover.getPaddingRight(), cover.getPaddingBottom());
+        nextCoverImage.setPadding(cover.getPaddingLeft()+5, cover.getPaddingTop()+26,
+                                 cover.getPaddingRight()+2, cover.getPaddingBottom()+26);
         
         // Animer la sortie de l'image actuelle
         ObjectAnimator exitAnimator = ObjectAnimator.ofFloat(
                 cover, "translationX", 0f, -direction * screenWidth);
         exitAnimator.setDuration(500);
         exitAnimator.setInterpolator(new DecelerateInterpolator());
+        ObjectAnimator exitAuraAnimator = ObjectAnimator.ofFloat(
+                aura, "translationX", 0f, -direction * screenWidth);
+        exitAuraAnimator.setDuration(500);
+        exitAuraAnimator.setInterpolator(new DecelerateInterpolator());
         
         // Animer l'entrée de la nouvelle image
         ObjectAnimator enterAnimator = ObjectAnimator.ofFloat(
                 nextCoverImage, "translationX", direction * screenWidth, 0f);
         enterAnimator.setDuration(500);
         enterAnimator.setInterpolator(new DecelerateInterpolator());
+        ObjectAnimator enterAuraAnimator = ObjectAnimator.ofFloat(
+                aura, "translationX", direction * screenWidth, 0f);
+        enterAuraAnimator.setDuration(500);
+        enterAuraAnimator.setInterpolator(new DecelerateInterpolator());
         
         // Créer un ensemble d'animations
         AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.playTogether(exitAnimator, enterAnimator);
+        animatorSet.playTogether(exitAnimator, enterAnimator, exitAuraAnimator, enterAuraAnimator);
         
         // Définir un listener pour la fin de l'animation
         animatorSet.addListener(new android.animation.AnimatorListenerAdapter() {

@@ -67,7 +67,7 @@
                 android:layout_margin="8dp"
                 android:queryHint="Rechercher un artiste"
                 android:iconifiedByDefault="false"
-                android:background="#33FFFFFF" />
+                android:background="#BBFFFFFF" />
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/liked_recycler_view"

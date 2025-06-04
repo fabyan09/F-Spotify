@@ -22,15 +22,26 @@
             <FrameLayout
                 android:id="@+id/media_container"
                 android:layout_width="match_parent"
-                android:layout_height="300dp"
+                android:layout_height="320dp"
                 android:layout_marginTop="16dp">
+
+                <!-- Aura blanche -->
+                <ImageView
+                    android:id="@+id/aura_image"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginLeft="32dp"
+                    android:layout_marginRight="32dp"
+                    android:background="@drawable/rounded_white_aura"
+                    android:alpha="0.1" />
 
                 <ImageView
                     android:id="@+id/cover_image"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent"
+                    android:layout_height="300dp"
                     android:scaleType="fitCenter"
-                    android:layout_marginTop="20dp"/>
+                    android:layout_marginTop="10dp"
+                    android:radius="100dp"/>
 
                 <ScrollView
                     android:id="@+id/lyrics_scroll"
@@ -45,7 +56,8 @@
                         android:padding="16dp"
                         android:textSize="20sp"
                         android:gravity="center_horizontal"
-                        android:textAlignment="center" />
+                        android:textAlignment="center"
+                        android:textColor="@color/white"/>
 
                 </ScrollView>
             </FrameLayout>
@@ -62,7 +74,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="24sp"
                     android:textStyle="bold"
-                    android:textColor="@color/black"
+                    android:textColor="@color/white"
                     android:layout_centerHorizontal="true"/>
 
                 <ImageButton
@@ -84,8 +96,8 @@
                 android:layout_marginTop="4dp"
                 android:textSize="18sp"
                 android:textStyle="italic"
-                android:textColor="@android:color/black"
-                android:layout_gravity="center_horizontal" />
+                android:textColor="@android:color/white"
+                android:layout_gravity="center_horizontal"/>
 
             <!-- Bouton Like -->
             <ImageButton
@@ -114,7 +126,7 @@
                     android:text="0:00"
                     android:textSize="14sp"
                     android:layout_marginEnd="8dp"
-                    android:textColor="@android:color/black" />
+                    android:textColor="@android:color/white"/>
 
                 <SeekBar
                     android:id="@+id/seek_bar"
@@ -122,6 +134,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:thumbTint="#4CAF50"
+                    android:progressBackgroundTint="@color/white"
                     android:progressTint="#4CAF50"/>
 
                 <TextView
@@ -131,7 +144,7 @@
                     android:text="0:00"
                     android:textSize="14sp"
                     android:layout_marginStart="8dp"
-                    android:textColor="@android:color/black" />
+                    android:textColor="@android:color/white" />
             </LinearLayout>
 
             <!-- Commandes audio -->
