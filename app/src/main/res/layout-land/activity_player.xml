@@ -21,6 +21,16 @@
             android:layout_weight="1"
             android:layout_marginEnd="8dp">
 
+            <!-- Aura blanche -->
+            <ImageView
+                android:id="@+id/aura_image"
+                android:layout_width="1dp"
+                android:layout_height="1dp"
+                android:layout_marginLeft="32dp"
+                android:layout_marginRight="32dp"
+                android:background="@drawable/rounded_white_aura"
+                android:alpha="0.1" />
+
             <ImageView
                 android:id="@+id/cover_image"
                 android:layout_width="match_parent"
@@ -41,7 +51,8 @@
                     android:padding="16dp"
                     android:textSize="18sp"
                     android:gravity="center_horizontal"
-                    android:textAlignment="center" />
+                    android:textAlignment="center"
+                    android:textColor="@color/white"/>
 
             </ScrollView>
         </FrameLayout>
@@ -67,7 +78,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="22sp"
                     android:textStyle="bold"
-                    android:textColor="@color/black"
+                    android:textColor="@color/white"
                     android:layout_centerHorizontal="true"/>
 
                 <ImageButton
@@ -89,7 +100,7 @@
                 android:layout_marginTop="4dp"
                 android:textSize="16sp"
                 android:textStyle="italic"
-                android:textColor="@android:color/black"
+                android:textColor="@android:color/white"
                 android:layout_gravity="center_horizontal" />
 
             <!-- Bouton Like -->
@@ -125,7 +136,7 @@
                     android:text="0:00"
                     android:textSize="14sp"
                     android:layout_marginEnd="8dp"
-                    android:textColor="@android:color/black" />
+                    android:textColor="@android:color/white" />
 
                 <SeekBar
                     android:id="@+id/seek_bar"
@@ -142,7 +153,7 @@
                     android:text="0:00"
                     android:textSize="14sp"
                     android:layout_marginStart="8dp"
-                    android:textColor="@android:color/black" />
+                    android:textColor="@android:color/white" />
             </LinearLayout>
 
             <!-- Commandes audio -->
