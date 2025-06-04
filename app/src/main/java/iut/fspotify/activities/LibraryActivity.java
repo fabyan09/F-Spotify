@@ -8,12 +8,15 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.SearchView;
+import android.widget.Button;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -77,6 +80,10 @@ public class LibraryActivity extends AppCompatActivity implements MusicPlayerSer
         albumsButton = findViewById(R.id.albums_button);
         searchView = findViewById(R.id.search_view);
         artistToolbar = findViewById(R.id.artist_toolbar);
+
+
+        // Sélectionner "Titres Likés" par défaut
+        updateButtonStates(likedSongsButton, likedSongsButton, artistsButton, albumsButton);
         
         // Initialisation du menu de navigation
         bottomNavigationView = findViewById(R.id.bottom_navigation);
@@ -104,7 +111,6 @@ public class LibraryActivity extends AppCompatActivity implements MusicPlayerSer
 
         likedSongsButton.setOnClickListener(v -> {
             updateButtonStates(likedSongsButton, likedSongsButton, artistsButton, albumsButton);
-            searchView.setVisibility(View.GONE);
             artistToolbar.setVisibility(View.GONE);
             showLikedSongs();
         });
@@ -118,7 +124,6 @@ public class LibraryActivity extends AppCompatActivity implements MusicPlayerSer
 
         albumsButton.setOnClickListener(v -> {
             updateButtonStates(albumsButton, likedSongsButton, artistsButton, albumsButton);
-            searchView.setVisibility(View.GONE);
             artistToolbar.setVisibility(View.GONE);
             showAlbums();
         });
@@ -213,13 +218,6 @@ public class LibraryActivity extends AppCompatActivity implements MusicPlayerSer
                 overridePendingTransition(0, 0); // Désactive l'animation
             }
         });
-    }
-
-    private void updateButtonStates(androidx.appcompat.widget.AppCompatButton activeButton, androidx.appcompat.widget.AppCompatButton... allButtons) {
-        for (androidx.appcompat.widget.AppCompatButton button : allButtons) {
-            button.setBackgroundTintList(getColorStateList(R.color.button_selector));
-        }
-        activeButton.setBackgroundTintList(getColorStateList(R.color.button_selector_active));
     }
 
     private void showLikedSongs() {
@@ -442,5 +440,15 @@ public class LibraryActivity extends AppCompatActivity implements MusicPlayerSer
 
         SharedPreferences prefs = getSharedPreferences("LIKED_SONGS", Context.MODE_PRIVATE);
         prefs.unregisterOnSharedPreferenceChangeListener(preferenceChangeListener);
+    }
+    private void updateButtonStates(Button activeButton, Button... allButtons) {
+        for (Button button : allButtons) {
+            button.setBackgroundColor(getResources().getColor(R.color.green)); // Couleur par défaut
+            button.setTextColor(getResources().getColor(R.color.white)); // Texte par défaut
+            button.setTypeface(null, android.graphics.Typeface.NORMAL); // Texte normal
+        }
+        activeButton.setTextColor(getResources().getColor(R.color.gray)); // Texte du bouton sélectionné
+        activeButton.setBackgroundColor(getResources().getColor(R.color.dark_green)); // Couleur du bouton sélectionné
+        activeButton.setTypeface(null, android.graphics.Typeface.BOLD); // Texte en gras
     }
 }
