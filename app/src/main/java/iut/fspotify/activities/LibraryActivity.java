@@ -1,5 +1,6 @@
 package iut.fspotify.activities;
 
+import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -70,6 +71,7 @@ public class LibraryActivity extends AppCompatActivity implements MusicPlayerSer
         }
     };
 
+    @SuppressLint("WrongViewCast")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
